@@ -38,6 +38,13 @@ constraint, not a nice-to-have.
    pages are pre-rendered, revalidation is event-driven off rate saves. Anything
    that puts a database query on a normal page view is a regression.
 
+7. **No shop fact is hardcoded.** Shop name, address, phone, WhatsApp, email,
+   logo, hours, social links, making-charge default, GST percent, rounding step,
+   disclaimer copy, hero content, SEO location terms — all of it lives in
+   `settings` and is editable from the admin panel. If a value describes the shop
+   or the business rather than the system, it is a setting. The owner stated this
+   directly: everything he has told us, he expects to change himself later.
+
 ---
 
 ## Where things are

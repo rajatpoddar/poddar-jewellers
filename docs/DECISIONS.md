@@ -103,3 +103,25 @@ through it gets numbers banned. The shop's WhatsApp number is its most valuable
 channel, so Phase 4 must keep transactional (Evolution, low volume,
 customer-initiated) separate from marketing (official Cloud API, approved
 templates, explicit opt-in).
+
+---
+
+### D10 — Everything that describes the shop is a setting, not a constant
+**2026-09-13**
+
+The owner's words: *"me jo bol rha hu baad me change karunga ye sab kuch admin
+panel se change ho jana chahiye."* Every fact he supplied is provisional — the
+phone number is his personal one, the email is his personal one, the logo does not
+exist yet, the photos are placeholders.
+
+So the rule is broader than those specific fields: **if a value describes the shop
+or the business rather than the system, it is a setting.** Shop identity, contact
+details, hours, social links, the 15% making default, GST percent, rounding step,
+disclaimer copy, hero content, SEO location terms.
+
+Implemented as a single-row `settings` table with typed columns, not a key-value
+store. Typed columns keep the price engine's inputs type-safe and let the admin
+form be explicit and grouped, which matters more here than the flexibility of
+key-value — the admin is going to be a non-technical user.
+
+Seed values come from `PROJECT.md` on first run and are never read from code again.

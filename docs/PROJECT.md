@@ -3,6 +3,10 @@
 Real-world facts about the shop and the project. Design and architecture live in
 the Phase 1 spec; this file holds the things the spec references but does not own.
 
+> **Every fact on this page is a seed value, not a constant.** All of it is
+> editable from the admin panel. Nothing here may be hardcoded anywhere in the
+> codebase — see Hard Rule 7 in `CLAUDE.md`.
+
 ---
 
 ## The shop
@@ -10,21 +14,52 @@ the Phase 1 spec; this file holds the things the spec references but does not ow
 | | |
 |---|---|
 | Name | Poddar Jewellers |
-| Location | Palojori, Deoghar, Jharkhand |
+| Address | Main Road Palojori, Deoghar, Jharkhand 814146 |
 | Phone | 7250580175 |
 | WhatsApp | 7250580175 (same number) |
+| Email | rajatpoddar17@gmail.com |
+| Availability | Website live 24x7 |
+| Social | None yet |
+| Logo | Not made yet |
 | Owner | Rajat Poddar — runs admin today |
 | Future admin | Rajat's father — non-technical, handover planned |
 
-**Phone number is temporary.** 7250580175 is Rajat's personal number, standing in
-until the shop number is ready. It must be a single config value, referenced
-nowhere else, so the switch is a one-line change.
+### Temporary values
+
+These are stand-ins and **will** change. They are seeded into settings on first
+run and changed from the admin panel afterwards — no code change, no deploy.
+
+- **Phone / WhatsApp 7250580175** — Rajat's personal number, until the shop number is ready
+- **Email rajatpoddar17@gmail.com** — Rajat's personal email, until the shop has one
+- **Logo** — until one exists, the shop name is set as a typographic wordmark in the
+  display face. The admin panel accepts a logo upload that replaces it.
+- **Product photos** — placeholders until the real catalog is shot to the standard
+  in `PHOTOGRAPHY.md`
+- **Counter hours** — the site shows "Online 24x7". If the physical shop's counter
+  timings should appear on the contact page, they go in the admin panel.
 
 ### Market context
 
 The shop is in Palojori, Deoghar district, Jharkhand. The owner tracks Asansol
 bullion rates as the nearby reference market. Local SEO on `/rates` should target
-Palojori, Deoghar and Jharkhand, with Asansol as a secondary term.
+Palojori, Deoghar and Jharkhand, with Asansol as a secondary term. These terms are
+settings, not constants.
+
+---
+
+## Pricing
+
+| | |
+|---|---|
+| Default making charge | **15%**, on every product |
+| Category override | Set from admin, per category |
+| Product override | Set from admin, per product |
+| GST | 3% on the full value — **pending CA confirmation** |
+| Rounding | Always up, to the nearest Rs 100 (Rs 10 under Rs 10,000) |
+
+The owner confirmed 15% applies across the board today. Category and product
+overrides exist for when that changes, and changing the 15% default itself is an
+admin field, not a deploy.
 
 ---
 
@@ -73,25 +108,13 @@ Phase boundaries and estimates are in the spec, Section 12. Summary:
 
 ## Open questions
 
-Answers go here as they arrive; each one that stays open is marked in the code
-with a `TODO(project)` comment pointing at this file.
-
 | # | Question | Needed by | Status |
 |---|---|---|---|
 | 1 | GST treatment — 3% on the full value (metal + making + stone)? | Before launch | **Ask the CA** |
-| 2 | Actual making-charge percentages, per category | Before catalog entry | Open |
-| 3 | Shop opening hours | Before contact page | Open |
-| 4 | Does a logo exist? | Before visual design | Open |
-| 5 | Full postal address + pincode | Before contact page and local SEO | Open |
-| 6 | Shop email address | Before contact page | Open |
-| 7 | GSTIN | Phase 2 (invoicing) | Open |
-| 8 | Existing Instagram / Facebook page | Before footer links | Open |
-| 9 | Domain purchased? | Before deployment | Open |
+| 2 | GSTIN | Phase 2 (invoicing) | Open |
+| 3 | Domain purchased? | Before deployment | Open |
+| 4 | Real logo | Whenever ready — wordmark until then | Open |
+| 5 | Real product photos | Before launch — placeholders until then | Open |
+| 6 | Physical counter hours, if they should be shown | Before launch | Open |
 
----
-
-## Assets needed
-
-- 2-3 real product photos, to design against rather than guessing with stock
-- Logo, if one exists
-- Eventually: the full catalog shot to the standard in `PHOTOGRAPHY.md`
+Resolved: making charge (15% default), address, phone, email, social (none yet).
