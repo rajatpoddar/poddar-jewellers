@@ -6,7 +6,7 @@
 
 **Architecture:** All money is integer paise; all percentages are integer basis points; no float ever accumulates a rupee value. The price engine is a set of pure functions with no database or framework dependency, tested in isolation. Which purities a shop deals in is data, not an enum, so the daily rate screen builds itself from the shop's own metal types. Persistence is Prisma over Postgres. The admin is Next.js App Router server components with server actions. Saving a rate recomputes a per-product price range cache and revalidates cached pages.
 
-**Tech Stack:** Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS v4, PostgreSQL 16, Prisma 6, Vitest 3, jose, bcryptjs, sharp, Docker Compose.
+**Tech Stack:** Next.js 16 (App Router), React 19, TypeScript 5, Tailwind CSS v4, PostgreSQL 16 in production (14 locally), Prisma 7, Vitest 5, jose, bcryptjs, sharp, Docker Compose.
 
 **Spec:** `docs/superpowers/specs/2026-09-13-phase1-catalog-price-engine-design.md`
 
@@ -29,7 +29,11 @@ From the spec and `CLAUDE.md`. Every task inherits these.
 - **GST is 300 bp (3%)** on metal + making + stone. Pending the shop's CA; it is a `Shop` field so changing it is not a deploy.
 - **The daily admin screen stays a 30-second job.** One input per metal type and a Save button. Nothing destructive reachable from it.
 - **Currency renders with Indian digit grouping** — `Rs 3,37,900`, never `Rs 337,900`. Use `toLocaleString('en-IN')`.
-- **Node 22**, package manager `npm`.
+- **Node 22 or newer**, package manager `npm`.
+- **Versions are the current stable ones as of 2026-09-13**, verified against the
+  registry rather than assumed — see D12 in `docs/DECISIONS.md`. `prisma`'s
+  `latest` dist-tag points at an 8.0 release candidate; this project uses the
+  stable 7.10.0.
 
 ---
 
@@ -113,7 +117,9 @@ poddar-jewellers/
   "name": "poddar-jewellers",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
@@ -124,28 +130,30 @@ poddar-jewellers/
     "db:seed": "tsx prisma/seed.ts",
     "typecheck": "tsc --noEmit"
   },
-  "prisma": { "seed": "tsx prisma/seed.ts" },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
   "dependencies": {
-    "@prisma/client": "^6.2.0",
+    "@prisma/client": "^7.10.0",
     "bcryptjs": "^2.4.3",
     "jose": "^5.9.6",
-    "next": "^15.1.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "sharp": "^0.33.5",
+    "next": "^16.3.5",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "sharp": "^0.35.4",
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.0.0",
+    "@tailwindcss/postcss": "^4.3.3",
     "@types/bcryptjs": "^2.4.6",
-    "@types/node": "^22.10.0",
+    "@types/node": "^24.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "prisma": "^6.2.0",
-    "tailwindcss": "^4.0.0",
-    "tsx": "^4.19.2",
+    "prisma": "^7.10.0",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.13",
     "typescript": "^5.7.2",
-    "vitest": "^3.0.0"
+    "vitest": "^5.0.0"
   }
 }
 ```
