@@ -4,8 +4,10 @@ Real-world facts about the shop and the project. Design and architecture live in
 the Phase 1 spec; this file holds the things the spec references but does not own.
 
 > **Every fact on this page is a seed value, not a constant.** All of it is
-> editable from the admin panel. Nothing here may be hardcoded anywhere in the
-> codebase — see Hard Rule 7 in `CLAUDE.md`.
+> editable from the admin panel, and none of it may be hardcoded anywhere in the
+> codebase — Hard Rule 7 in `CLAUDE.md`, enforced by
+> `src/lib/no-hardcoded-shop.test.ts`. `prisma/seed.ts` is the only file that
+> names a shop.
 
 ---
 
@@ -113,8 +115,12 @@ Phase boundaries and estimates are in the spec, Section 12. Summary:
 | 1 | GST treatment — 3% on the full value (metal + making + stone)? | Before launch | **Ask the CA** |
 | 2 | GSTIN | Phase 2 (invoicing) | Open |
 | 3 | Domain purchased? | Before deployment | Open |
-| 4 | Real logo | Whenever ready — wordmark until then | Open |
-| 5 | Real product photos | Before launch — placeholders until then | Open |
+| 4 | Real logo | Whenever ready — the shop name is set in type until then | Open |
+| 5 | Real product photos | Before the storefront is designed | Open |
 | 6 | Physical counter hours, if they should be shown | Before launch | Open |
 
-Resolved: making charge (15% default), address, phone, email, social (none yet).
+Resolved: making charge (15% default, confirmed), address, phone, email, social
+(none yet), hosting (NAS first, built portable), and how this is sold (one
+deployment per shop — spec Section 12).
+
+None of questions 1–6 block Phase 1B. They block launch.

@@ -1975,7 +1975,7 @@ git commit -m "feat: seed one shop with its metal types, taxonomy and samples"
 ### Task 10: Admin authentication
 
 **Files:**
-- Create: `src/auth/session.ts`, `src/middleware.ts`, `src/app/admin/login/page.tsx`, `src/app/admin/login/actions.ts`
+- Create: `src/auth/session.ts`, `src/proxy.ts`, `src/app/admin/login/page.tsx`, `src/app/admin/login/actions.ts`
 - Test: `src/auth/session.test.ts`
 
 **Interfaces:**
@@ -2092,7 +2092,7 @@ export const sessionCookieOptions = {
 Run: `npm test -- src/auth/session.test.ts`
 Expected: PASS, 4 tests
 
-- [ ] **Step 5: Implement `src/middleware.ts`**
+- [ ] **Step 5: Implement `src/proxy.ts`**
 
 ```ts
 import { NextResponse, type NextRequest } from 'next/server';
@@ -2204,7 +2204,7 @@ Expected: redirected to `/admin/login`; the seeded credentials sign you in; a wr
 - [ ] **Step 8: Commit**
 
 ```bash
-git add src/auth/ src/middleware.ts src/app/admin/login/
+git add src/auth/ src/proxy.ts src/app/admin/login/
 git commit -m "feat: admin session auth with signed cookie and login page"
 ```
 
@@ -2213,7 +2213,7 @@ git commit -m "feat: admin session auth with signed cookie and login page"
 ### Task 11: Admin shell
 
 **Files:**
-- Create: `src/app/admin/layout.tsx`, `src/components/admin/Nav.tsx`
+- Create: `src/app/admin/(panel)/layout.tsx`, `src/components/admin/Nav.tsx`
 
 **Interfaces:**
 - Consumes: `auth/session.ts` (`getCurrentAdmin`), `app/admin/login/actions.ts` (`logout`), `lib/shop.ts` (`getShop`)
@@ -2255,7 +2255,7 @@ export function Nav({ shopName, adminName }: { shopName: string; adminName: stri
 }
 ```
 
-- [ ] **Step 2: Implement `src/app/admin/layout.tsx`**
+- [ ] **Step 2: Implement `src/app/admin/(panel)/layout.tsx`**
 
 ```tsx
 import type { ReactNode } from 'react';
@@ -2288,7 +2288,7 @@ Expected: the nav renders with the seeded shop name and the signed-in admin's na
 - [ ] **Step 4: Commit**
 
 ```bash
-git add src/app/admin/layout.tsx src/components/admin/Nav.tsx
+git add src/app/admin/(panel)/layout.tsx src/components/admin/Nav.tsx
 git commit -m "feat: admin shell and navigation"
 ```
 
@@ -2454,13 +2454,13 @@ git commit -m "feat: recompute every product price cache against the latest rate
 The screen that makes this sellable. A shop adds Silver 925 here, and tomorrow's rate screen has a box for it.
 
 **Files:**
-- Create: `src/app/admin/metals/page.tsx`, `src/app/admin/metals/actions.ts`
+- Create: `src/app/admin/(panel)/metals/page.tsx`, `src/app/admin/(panel)/metals/actions.ts`
 
 **Interfaces:**
 - Consumes: `db.ts`, `shop.ts`, `price-cache.server.ts`
 - Produces: server actions `createMetalType(prev, formData)`, `updateMetalType(id, formData)`, `deactivateMetalType(id)`
 
-- [ ] **Step 1: Implement `src/app/admin/metals/actions.ts`**
+- [ ] **Step 1: Implement `src/app/admin/(panel)/metals/actions.ts`**
 
 ```ts
 'use server';
@@ -2529,7 +2529,7 @@ export async function deactivateMetalType(id: string) {
 }
 ```
 
-- [ ] **Step 2: Implement `src/app/admin/metals/page.tsx`**
+- [ ] **Step 2: Implement `src/app/admin/(panel)/metals/page.tsx`**
 
 ```tsx
 import { db } from '@/lib/db';
@@ -2607,7 +2607,7 @@ after Task 14 and note it here.)
 - [ ] **Step 4: Commit**
 
 ```bash
-git add src/app/admin/metals/
+git add src/app/admin/(panel)/metals/
 git commit -m "feat: metal type management — a shop defines its own purities"
 ```
 
@@ -2618,13 +2618,13 @@ git commit -m "feat: metal type management — a shop defines its own purities"
 The one screen the shop uses every morning. It must stay a thirty-second job, and it builds itself from the shop's metal types.
 
 **Files:**
-- Create: `src/app/admin/page.tsx`, `src/app/admin/actions.ts`, `src/components/admin/RateForm.tsx`
+- Create: `src/app/admin/(panel)/page.tsx`, `src/app/admin/(panel)/actions.ts`, `src/components/admin/RateForm.tsx`
 
 **Interfaces:**
 - Consumes: `shop.ts` (`getShop`, `getMetalTypes`), `rates.server.ts` (`getLatestRate`), `rates.ts` (`rateStatus`), `money.ts`, `price-cache.server.ts`
 - Produces: server action `saveRate(prev, formData)`; form fields are named `rate_<metalTypeId>`
 
-- [ ] **Step 1: Implement `src/app/admin/actions.ts`**
+- [ ] **Step 1: Implement `src/app/admin/(panel)/actions.ts`**
 
 ```ts
 'use server';
@@ -2677,7 +2677,7 @@ export async function saveRate(_prev: SaveRateState, formData: FormData): Promis
 'use client';
 
 import { useActionState, useState } from 'react';
-import { saveRate, type SaveRateState } from '@/app/admin/actions';
+import { saveRate, type SaveRateState } from '@/app/admin/(panel)/actions';
 
 export interface RateField {
   metalTypeId: string;
@@ -2757,7 +2757,7 @@ export function RateForm({ fields }: { fields: RateField[] }) {
 }
 ```
 
-- [ ] **Step 3: Implement `src/app/admin/page.tsx`**
+- [ ] **Step 3: Implement `src/app/admin/(panel)/page.tsx`**
 
 ```tsx
 import Link from 'next/link';
@@ -2837,7 +2837,7 @@ Expected: every product's cached range moved with the rate. Then:
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/app/admin/page.tsx src/app/admin/actions.ts src/components/admin/RateForm.tsx
+git add src/app/admin/(panel)/page.tsx src/app/admin/(panel)/actions.ts src/components/admin/RateForm.tsx
 git commit -m "feat: daily rate screen, built from the shop's own metal types"
 ```
 
@@ -2846,13 +2846,13 @@ git commit -m "feat: daily rate screen, built from the shop's own metal types"
 ### Task 15: Category management
 
 **Files:**
-- Create: `src/app/admin/categories/page.tsx`, `src/app/admin/categories/actions.ts`
+- Create: `src/app/admin/(panel)/categories/page.tsx`, `src/app/admin/(panel)/categories/actions.ts`
 
 **Interfaces:**
 - Consumes: `db.ts`, `shop.ts`, `price-cache.server.ts`
 - Produces: server actions `createCategory(prev, formData)`, `updateCategory(id, formData)`, `deleteCategory(id)`
 
-- [ ] **Step 1: Implement `src/app/admin/categories/actions.ts`**
+- [ ] **Step 1: Implement `src/app/admin/(panel)/categories/actions.ts`**
 
 ```ts
 'use server';
@@ -2947,7 +2947,7 @@ export async function deleteCategory(id: string) {
 }
 ```
 
-- [ ] **Step 2: Implement `src/app/admin/categories/page.tsx`**
+- [ ] **Step 2: Implement `src/app/admin/(panel)/categories/page.tsx`**
 
 ```tsx
 import { db } from '@/lib/db';
@@ -3036,7 +3036,7 @@ Traditional Payal's cached range fell relative to its 15% value (min was
 - [ ] **Step 4: Commit**
 
 ```bash
-git add src/app/admin/categories/
+git add src/app/admin/(panel)/categories/
 git commit -m "feat: category management with making-charge overrides"
 ```
 
@@ -3196,13 +3196,13 @@ git commit -m "feat: content-hashed AVIF/WebP image variant pipeline"
 The largest admin surface. Creates and edits products, their weight options, images and attributes.
 
 **Files:**
-- Create: `src/app/admin/products/page.tsx`, `src/app/admin/products/actions.ts`, `src/app/admin/products/new/page.tsx`, `src/app/admin/products/[id]/page.tsx`, `src/components/admin/ProductForm.tsx`
+- Create: `src/app/admin/(panel)/products/page.tsx`, `src/app/admin/(panel)/products/actions.ts`, `src/app/admin/(panel)/products/new/page.tsx`, `src/app/admin/(panel)/products/[id]/page.tsx`, `src/components/admin/ProductForm.tsx`
 
 **Interfaces:**
 - Consumes: `db.ts`, `shop.ts`, `weights.ts` (`parseWeights`), `images.ts`, `price-cache.server.ts`, `pricing/making.ts`, `money.ts`
 - Produces: server actions `saveProduct(id: string | null, prev, formData)` and `deleteProduct(id)`
 
-- [ ] **Step 1: Implement `src/app/admin/products/actions.ts`**
+- [ ] **Step 1: Implement `src/app/admin/(panel)/products/actions.ts`**
 
 ```ts
 'use server';
@@ -3356,7 +3356,7 @@ export async function deleteProduct(id: string) {
 'use client';
 
 import { useActionState } from 'react';
-import { saveProduct, type SaveProductState } from '@/app/admin/products/actions';
+import { saveProduct, type SaveProductState } from '@/app/admin/(panel)/products/actions';
 
 export interface ProductFormData {
   id: string | null;
@@ -3496,7 +3496,7 @@ export function ProductForm({ product, options }: { product: ProductFormData; op
 
 - [ ] **Step 3: Implement the product list page**
 
-`src/app/admin/products/page.tsx`:
+`src/app/admin/(panel)/products/page.tsx`:
 ```tsx
 import Link from 'next/link';
 import { db } from '@/lib/db';
@@ -3553,7 +3553,7 @@ export default async function ProductsPage() {
 
 - [ ] **Step 4: Implement the new and edit pages**
 
-`src/app/admin/products/new/page.tsx`:
+`src/app/admin/(panel)/products/new/page.tsx`:
 ```tsx
 import { db } from '@/lib/db';
 import { getShop, getMetalTypes } from '@/lib/shop';
@@ -3594,7 +3594,7 @@ export default async function NewProductPage() {
 }
 ```
 
-`src/app/admin/products/[id]/page.tsx`:
+`src/app/admin/(panel)/products/[id]/page.tsx`:
 ```tsx
 import { notFound } from 'next/navigation';
 import { db } from '@/lib/db';
@@ -3698,7 +3698,7 @@ making blank, status LIVE, one photo. Confirm:
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/app/admin/products/ src/components/admin/ProductForm.tsx
+git add src/app/admin/(panel)/products/ src/components/admin/ProductForm.tsx
 git commit -m "feat: product management with weights, images, attributes and making inheritance"
 ```
 
@@ -3707,13 +3707,13 @@ git commit -m "feat: product management with weights, images, attributes and mak
 ### Task 18: Shop settings and branding
 
 **Files:**
-- Create: `src/app/admin/settings/page.tsx`, `src/app/admin/settings/form.tsx`, `src/app/admin/settings/actions.ts`
+- Create: `src/app/admin/(panel)/settings/page.tsx`, `src/app/admin/(panel)/settings/form.tsx`, `src/app/admin/(panel)/settings/actions.ts`
 
 **Interfaces:**
 - Consumes: `db.ts`, `shop.ts`, `price-cache.server.ts`
 - Produces: server action `saveSettings(prev, formData)`
 
-- [ ] **Step 1: Implement `src/app/admin/settings/actions.ts`**
+- [ ] **Step 1: Implement `src/app/admin/(panel)/settings/actions.ts`**
 
 ```ts
 'use server';
@@ -3795,7 +3795,7 @@ export async function saveSettings(_prev: SaveSettingsState, formData: FormData)
 }
 ```
 
-- [ ] **Step 2: Implement `src/app/admin/settings/form.tsx`**
+- [ ] **Step 2: Implement `src/app/admin/(panel)/settings/form.tsx`**
 
 ```tsx
 'use client';
@@ -3900,7 +3900,7 @@ export function SettingsForm({ shop }: { shop: Record<string, string | number | 
 }
 ```
 
-- [ ] **Step 3: Implement `src/app/admin/settings/page.tsx`**
+- [ ] **Step 3: Implement `src/app/admin/(panel)/settings/page.tsx`**
 
 ```tsx
 import { getShop } from '@/lib/shop';
@@ -3936,7 +3936,7 @@ admin nav picks it up.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/app/admin/settings/
+git add src/app/admin/(panel)/settings/
 git commit -m "feat: shop settings and branding — every shop fact editable without a deploy"
 ```
 
