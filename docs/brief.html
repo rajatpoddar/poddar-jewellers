@@ -305,9 +305,9 @@
     <p class="lede measure">A jewellery catalog customers can browse from home, where every piece shows a realistic all-inclusive price — even though gold and silver rates move every single day. The shop updates the rate once each morning, and the entire catalog re-prices itself.</p>
     <div class="facts">
       <span class="fact">Phase <b>1 of 6</b></span>
-      <span class="fact">Status <b>Design complete</b></span>
-      <span class="fact">Build <b>3–4 weeks</b></span>
-      <span class="fact">Updated <b>13 Sep 2026</b></span>
+      <span class="fact">Status <b>Admin built</b></span>
+      <span class="fact">Engine <b>79 tests passing</b></span>
+      <span class="fact">Updated <b>14 Sep 2026</b></span>
     </div>
   </header>
 
@@ -396,8 +396,8 @@
     <div class="phases">
       <div class="phase now">
         <div class="n">01</div>
-        <div><div class="t">Catalog and price engine</div><div class="d">Storefront, weight-based pricing, admin panel, rate page</div></div>
-        <div class="w">3–4 weeks</div>
+        <div><div class="t">Catalog and price engine</div><div class="d">Price engine and admin panel <strong>built</strong>. Storefront next.</div></div>
+        <div class="w">half done</div>
       </div>
       <div class="phase">
         <div class="n">02</div>
@@ -455,8 +455,9 @@
       <div class="ask">
         <div class="who">Developer</div>
         <ul>
-          <li><b>Next.js 15, TypeScript, Postgres, Prisma.</b> Deployed by Coolify onto an existing Synology NAS, public through a Cloudflare Tunnel already in place.</li>
-          <li><b>The price engine is a pure function</b> written test-first. It is the one place a bug shows a customer a wrong number.</li>
+          <li><b>Next.js 16, TypeScript, Postgres 16, Prisma 7.</b> Deployed by Coolify onto an existing Synology NAS, public through a Cloudflare Tunnel already in place.</li>
+          <li><b>The price engine is a pure function</b> written test-first — no database, no framework, 79 tests across the core. It is the one place a bug shows a customer a wrong number.</li>
+          <li><b>Metal types are rows, not an enum.</b> A shop adds Silver 925 from the admin panel and the daily rate screen grows an input by itself. No shop fact is hardcoded anywhere, and a test enforces it.</li>
           <li><b>Read <span class="num">CLAUDE.md</span> first.</b> It holds the rules that must not be broken — chiefly that price is never stored and the breakdown is never displayed.</li>
         </ul>
       </div>
@@ -484,7 +485,7 @@
       </table>
     </div>
 
-    <p class="note measure" style="margin-top:32px">One standing caution, relevant from Phase 4 onward. Bulk marketing sent through unofficial WhatsApp tooling gets numbers banned, and the shop's WhatsApp number is its single most valuable channel. Order updates and marketing broadcasts will therefore run on entirely separate systems, and the contact records imported in Phase 3 will carry consent rather than assume it.</p>
+    <p class="note measure" style="margin-top:32px" id="whatsapp-note">One standing caution, relevant from Phase 4 onward. Bulk marketing sent through unofficial WhatsApp tooling gets numbers banned, and the shop's WhatsApp number is its single most valuable channel. Order updates and marketing broadcasts will therefore run on entirely separate systems, and the contact records imported in Phase 3 will carry consent rather than assume it.</p>
   </section>
 
   <footer>
