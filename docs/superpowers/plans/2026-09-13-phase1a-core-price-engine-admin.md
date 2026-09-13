@@ -77,7 +77,7 @@ poddar-jewellers/
 │   ├── auth/
 │   │   ├── session.ts
 │   │   └── session.test.ts
-│   ├── middleware.ts             # protects /admin
+│   ├── proxy.ts                  # optimistic /admin gate (Next 16 renamed middleware)
 │   ├── components/admin/
 │   │   ├── Nav.tsx
 │   │   ├── RateForm.tsx
@@ -87,14 +87,15 @@ poddar-jewellers/
 │       ├── layout.tsx
 │       ├── page.tsx
 │       └── admin/
-│           ├── layout.tsx
-│           ├── page.tsx          # DAILY: today's rate
-│           ├── actions.ts        # saveRate
-│           ├── login/{page.tsx,actions.ts}
-│           ├── metals/{page.tsx,actions.ts}
-│           ├── products/{page.tsx,actions.ts,new/page.tsx,[id]/page.tsx}
-│           ├── categories/{page.tsx,actions.ts}
-│           └── settings/{page.tsx,form.tsx,actions.ts}
+│           ├── login/{page.tsx,form.tsx,actions.ts}   # OUTSIDE the panel group
+│           └── (panel)/          # route group — same URLs, own layout
+│               ├── layout.tsx    # shell + the authoritative auth redirect
+│               ├── page.tsx      # DAILY: today's rate
+│               ├── actions.ts    # saveRate
+│               ├── metals/{page.tsx,form.tsx,actions.ts}
+│               ├── products/{page.tsx,actions.ts,new/page.tsx,[id]/page.tsx}
+│               ├── categories/{page.tsx,actions.ts}
+│               └── settings/{page.tsx,form.tsx,actions.ts}
 ```
 
 `src/lib/pricing/` is pure domain logic and imports nothing from `db.ts` or `next/*`. That is what lets it be exhaustively tested without a database or a server. Anything that touches Prisma lives in a `.server.ts` file so a unit test importing the pure module never drags Prisma into the test process.
@@ -4169,3 +4170,35 @@ git commit -m "feat: production container and deployment guide"
 - [ ] `grep -cE '^\s+price\s' prisma/schema.prisma` returns 0 — no price column exists
 - [ ] `grep -rn "Poddar\|7250580175\|Palojori" src/` returns nothing — no shop
       fact is read from source outside `prisma/seed.ts`
+
+
+---
+
+## Amendments made during execution
+
+Recorded here so the plan matches what was built. Full reasoning in
+`docs/DECISIONS.md`.
+
+- **Dependency versions** (D12): Next 16.3.5, Prisma 7.10.0, sharp 0.35.4,
+  Vitest 5. Four Prisma-CLI advisories accepted.
+- **Prisma 7** (D13): `prisma.config.ts` holds the datasource URL and the seed
+  command; the client takes a `@prisma/adapter-pg` driver adapter.
+  `ALTER ROLE <user> CREATEDB` is needed for `migrate dev`'s shadow database.
+- **Next 16 renamed `middleware` to `proxy`** (D14). `src/proxy.ts` exports a
+  function named `proxy`; the API is otherwise unchanged.
+- **Admin moved into a `(panel)` route group** (D14). The login page sits
+  outside it, so the panel layout can hard-`redirect()` when signed out rather
+  than conditionally rendering. Next's own proxy documentation says proxy is not
+  an authorization solution, so the layout — which runs server-side beneath every
+  admin page — is the authoritative gate and the proxy is an optimistic check.
+- **Destructive admin actions redirect with a message instead of throwing.** A
+  stack trace is not an answer for the non-technical admin this is being handed
+  to (Hard Rule 4).
+- **Two test expectations in this plan were arithmetically wrong** and were
+  corrected against independently computed figures: `formatINR(1234567800)` is
+  `Rs 1,23,45,678`; GST on Rs 94,024.50 is 282074 paise; the 30g silver total is
+  767556 paise.
+- **`rateStatus` used inconsistent thresholds** (warn exclusive, stale
+  inclusive). Both are exclusive now.
+- **`npx tsx -e` compiles as CommonJS** and rejects top-level `await`. Ad-hoc
+  database checks belong in a file.

@@ -222,3 +222,34 @@ Local development also needs `ALTER ROLE poddar CREATEDB`, because
 
 One testing note worth keeping: `npx tsx -e` compiles as CommonJS and rejects
 top-level `await`. Ad-hoc database checks go in a file, not in `-e`.
+
+---
+
+### D14 — Next 16 proxy, and where the admin gate actually lives
+**2026-09-14**
+
+Next 16 renamed the `middleware` file convention to `proxy`. `src/proxy.ts`
+exports a function named `proxy`; the API is otherwise identical.
+
+Reading Next's own guide on it changed the design. It says plainly that proxy
+"should not be used as a full session management or authorization solution" —
+it is for optimistic checks. The original plan had it as the only gate in front
+of the admin pages, with the layout merely rendering children bare when signed
+out. A bypassed proxy would then have rendered admin data.
+
+So the admin panel moved into a `(panel)` route group with the login page
+outside it. Route groups do not change URLs, so `/admin`, `/admin/metals` and
+the rest are untouched, but the panel now has its own layout that can
+`redirect('/admin/login')` outright. That layout runs on the server beneath
+every admin page, which makes it the authoritative gate; the proxy stays as the
+optimistic check that saves a round trip. Server actions check `getCurrentAdmin()`
+independently, so authorization holds at three layers.
+
+Two smaller things from the same session:
+
+- Next 16's `next dev` appends a block to `CLAUDE.md` on every run and re-adds it
+  if removed. It is committed rather than fought.
+- Destructive admin actions (deactivating a metal type, deleting a category)
+  redirect back with a readable message instead of throwing. The plan had them
+  throw; a stack trace is not an answer for the non-technical admin this is being
+  handed to.
