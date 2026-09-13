@@ -2,6 +2,7 @@
 
 **Updated:** 2026-09-14
 **Phase:** 1A complete and merged to `main`. 1B (storefront) not started.
+**Design system:** built and applied to every admin screen (D15).
 
 ---
 
@@ -19,13 +20,21 @@ Built and verified:
 - **Admin** — login, daily rate screen, metal types, categories, products, settings
 - **Image pipeline** — content-hashed AVIF/WebP at three widths
 - **Deployment** — Dockerfile, compose stack, and a guide covering another shop
+- **Design system** — token layer driven by the `Shop` row, component
+  vocabulary in `src/components/ui/`, every admin screen rebuilt on both.
+  `docs/DESIGN-SYSTEM.md` is the source of truth; D15 records why.
 
-79 tests pass. `tsc --noEmit` clean. Production build succeeds.
+80 tests pass. `tsc --noEmit` clean. Production build succeeds.
 
-One of those tests, `src/lib/no-hardcoded-shop.test.ts`, walks `src/` for
-shop-specific literals and fails the suite on a hit. It found two on its first
-run — the browser-tab title and a settings hint — which is why it exists now
-rather than as a line in a checklist.
+Two of those tests enforce rules rather than behaviour, which is why they exist
+as tests and not as lines in a checklist:
+
+- `src/lib/no-hardcoded-shop.test.ts` walks `src/` for shop-specific literals.
+  It found two on its first run — the browser-tab title and a settings hint.
+- `src/lib/design-system.test.ts` fails on a stock Tailwind palette class, a
+  literal hex, an untokenised radius, a raw `<img>` or an emoji, naming the
+  offending line and its replacement. It was checked against a deliberate
+  violation before being trusted.
 
 ## Verified by hand, against a running server
 
@@ -37,6 +46,23 @@ rather than as a line in a checklist.
 - The seed ran three times with no duplication
 - **Adding `SILVER_925` grew the rate screen by one input, with no code change**
 
+Design system, in a browser at 1440px, 1280px and 375px:
+
+- All five admin screens plus login and the product edit form render correctly;
+  no horizontal page scroll at 375px. The nav scrolls inside its own container
+  by design.
+- The shop's branding now actually reaches the interface: Instrument Serif
+  headings, `#8F621A` on buttons and the active nav tab, all read from the
+  `Shop` row through `<html>` custom properties.
+- Generated CSS confirmed to emit `var(--brand-ink)` rather than a baked hex,
+  with a `color-mix` fallback pair for older browsers — this is what lets one
+  build serve a second shop's colours.
+- Three defects were found by looking and fixed: `Input` hardcoded `w-full`, so
+  a caller's `w-20` lost the specificity race and a percentage box rendered
+  200px wide; the rate field stretched, pushing "/ gram" to the card's edge; and
+  `intent="danger"` as a permanently boxed red button shouted when repeated
+  down a list.
+
 ## Not verified
 
 - `docker compose build` — Docker is not installed on the development machine.
@@ -44,6 +70,12 @@ rather than as a line in a checklist.
   builds; the image itself is first exercised on the NAS.
 - The photo upload path through the product form. `processUpload` has six unit
   tests; the multipart form wiring does not.
+- The interface under a *different* shop's branding. The token layer is built
+  so that changing `brandPrimary` recolours everything coherently, and the
+  generated CSS was checked to confirm it can, but no second palette has been
+  entered and looked at. Contrast is the thing to re-measure when one is:
+  `#8F621A` is 5.34:1 on white, and a shop picking a lighter primary would not
+  be.
 - The rate-change `confirm()` dialog itself. Its threshold logic is a tested pure
   function (`significantMoves`, seven cases including the stray-extra-digit typo
   it exists to catch); the dialog cannot be driven by an automated browser
@@ -51,7 +83,8 @@ rather than as a line in a checklist.
 
 ## Next
 
-1. Write the Phase 1B plan — the storefront
+1. Write the Phase 1B plan — the storefront. It builds on
+   `src/components/ui/` and `docs/DESIGN-SYSTEM.md`, not on fresh markup.
 2. Enter the real catalog through the admin panel
 
 ## Blocked on the owner

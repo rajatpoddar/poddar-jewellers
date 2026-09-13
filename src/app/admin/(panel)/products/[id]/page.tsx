@@ -5,6 +5,10 @@ import { resolveMakingPercent } from '@/lib/pricing/making';
 import { makingSourceLabel } from '@/lib/labels';
 import { ProductForm } from '@/components/admin/ProductForm';
 import { deleteProduct } from '../actions';
+import { PageHeader } from '@/components/ui/Surface';
+import { BackLink } from '@/components/ui/BackLink';
+import { Button } from '@/components/ui/Button';
+import { TrashIcon } from '@/components/ui/icons';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,12 +64,21 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-4">
-        <h1 className="text-3xl font-semibold text-stone-900">{product.name}</h1>
-        <form action={deleteProduct.bind(null, product.id)} className="ml-auto">
-          <button type="submit" className="text-sm underline text-stone-500">Product hataiye</button>
-        </form>
-      </div>
+      <BackLink href="/admin/products">Sab products</BackLink>
+      <PageHeader
+        title={product.name}
+        action={
+          // Destructive actions never share a look with Save. This one is
+          // outlined in red and sits away from the primary button at the
+          // bottom of the form, so it is not reached by momentum.
+          <form action={deleteProduct.bind(null, product.id)}>
+            <Button type="submit" intent="danger">
+              <TrashIcon />
+              Product hataiye
+            </Button>
+          </form>
+        }
+      />
       <ProductForm
         product={{
           id: product.id,

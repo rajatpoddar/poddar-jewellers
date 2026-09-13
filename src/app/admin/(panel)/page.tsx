@@ -3,6 +3,8 @@ import { getShop, getMetalTypes } from '@/lib/shop';
 import { getLatestRate } from '@/lib/rates.server';
 import { rateStatus } from '@/lib/rates';
 import { RateForm, type RateField } from '@/components/admin/RateForm';
+import { PageHeader, Card, EmptyState } from '@/components/ui/Surface';
+import { Notice } from '@/components/ui/Notice';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,36 +23,35 @@ export default async function DailyRatePage() {
 
   return (
     <div className="space-y-7">
-      <div>
-        <h1 className="text-3xl font-semibold text-stone-900">Aaj ka Rate</h1>
-        <p className="text-stone-600 mt-1">
-          Rate bhariye aur Save dabaiye. Poori website apne aap update ho jayegi.
-        </p>
-      </div>
+      <PageHeader
+        title="Aaj ka Rate"
+        description="Rate bhariye aur Save dabaiye. Poori website apne aap update ho jayegi."
+      />
 
       {status !== 'FRESH' && (
-        <div className="border border-amber-300 bg-amber-50 rounded p-4 text-amber-900">
-          <strong>Rate purana hai.</strong>{' '}
+        <Notice tone="warn" title="Rate purana hai.">
           {latest
             ? `Aakhri baar ${latest.enteredAt.toLocaleString('en-IN')} ko update hua tha.`
             : 'Abhi tak koi rate nahi daala gaya.'}
-        </div>
+        </Notice>
       )}
 
       {metals.length === 0 ? (
-        <div className="border border-stone-300 bg-white rounded p-6">
-          <p className="text-stone-700">
-            Abhi koi metal type nahi hai. Pehle{' '}
-            <Link href="/admin/metals" className="underline">Metal types</Link> me
-            batayiye ki aapki dukaan kis-kis purity me kaam karti hai.
-          </p>
-        </div>
+        <Card>
+          <EmptyState title="Abhi koi metal type nahi hai">
+            Pehle{' '}
+            <Link href="/admin/metals" className="text-brand underline underline-offset-2">
+              Metal types
+            </Link>{' '}
+            me batayiye ki aapki dukaan kis-kis purity me kaam karti hai.
+          </EmptyState>
+        </Card>
       ) : (
         <RateForm fields={fields} />
       )}
 
       {latest && (
-        <p className="text-sm text-stone-500">
+        <p className="text-sm text-ink-faint">
           Aakhri update: {latest.enteredAt.toLocaleString('en-IN')} · {latest.enteredBy}
         </p>
       )}

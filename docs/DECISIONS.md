@@ -253,3 +253,56 @@ Two smaller things from the same session:
   redirect back with a readable message instead of throwing. The plan had them
   throw; a stack trace is not an answer for the non-technical admin this is being
   handed to.
+
+---
+
+### D15 — A design system, and fonts as a registry rather than a string
+**2026-09-14**
+
+The admin worked and looked like nothing. Every screen wrote its own
+`bg-stone-900 text-white rounded px-8 py-3`, `globals.css` was a single
+`@import "tailwindcss"`, and the five branding values already sitting on the
+`Shop` row — `brandPrimary`, `brandInk`, `brandGround`, `fontDisplay`,
+`fontBody` — were read by nothing. Hard Rule 7 was satisfied in the database and
+ignored by the interface: a second customer would have got the first customer's
+greys.
+
+So the interface now goes through a token layer. `brandStyle()` writes the five
+shop values onto `<html>` as custom properties; `globals.css` derives about
+twenty semantic tokens from them with `color-mix`; screens only ever name
+meanings — `bg-surface`, `text-ink-muted`, `intent="danger"`. `@theme inline` is
+the load-bearing part: `inline` makes Tailwind emit `var(--color-ink)` into each
+utility instead of copying today's hex in at build time, which is what lets one
+build serve a second shop's colours. Status hues are deliberately not derived —
+red has to stay red whatever primary a shop picks.
+
+The full direction is in `docs/DESIGN-SYSTEM.md`, and
+`src/lib/design-system.test.ts` enforces it the way
+`no-hardcoded-shop.test.ts` enforces Rule 7: it walks `src/` and fails on a
+stock palette class, a literal hex, an untokenised radius, a raw `<img>` or an
+emoji, naming the line and the replacement. It was checked against a deliberate
+violation before being trusted.
+
+**Fonts could not work the same way.** `next/font/google` self-hosts its files
+at build time, so it cannot accept a family name that only exists in a database
+row at request time. Three options: drop `next/font` and load Google's CSS at
+runtime (a render-blocking third-party request on every page, and it puts the
+customer's IP at Google — both against Hard Rule 6), rebuild per shop (a code
+edit per customer, against Hard Rule 8), or ship a registry.
+
+The registry won. `src/lib/branding.ts` imports a fixed set of faces and maps
+them by name; `Shop.fontDisplay` picks one of those names, and the settings
+screen offers exactly them as a dropdown instead of the free-text box it had.
+An unknown name falls back to the first registered face rather than to Times New
+Roman. Adding a font for a new customer is one entry and one build — additive,
+not a branch.
+
+The default pairing stays Instrument Serif + Karla, already in the seed.
+Cormorant/Montserrat and Playfair Display/Inter are registered beside it as the
+conventional luxury pairings, available to the next shop without a code change.
+
+Two UX defects were fixed in the same pass, both consequences of having no
+component vocabulary. Destructive actions were `text-sm underline text-stone-500`
+— pixel-identical to Save; delete is now the only red thing on its screen, with
+a trash icon, away from the primary button. And the admin nav had no active
+state at all, so no screen told you where you were.

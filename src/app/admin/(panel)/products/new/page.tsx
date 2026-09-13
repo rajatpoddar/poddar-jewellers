@@ -3,6 +3,8 @@ import { getShop, getMetalTypes } from '@/lib/shop';
 import { resolveMakingPercent } from '@/lib/pricing/making';
 import { makingSourceLabel } from '@/lib/labels';
 import { ProductForm } from '@/components/admin/ProductForm';
+import { PageHeader } from '@/components/ui/Surface';
+import { BackLink } from '@/components/ui/BackLink';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +22,8 @@ export default async function NewProductPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-semibold text-stone-900">Naya product</h1>
+      <BackLink href="/admin/products">Sab products</BackLink>
+      <PageHeader title="Naya product" />
       <ProductForm
         product={{
           id: null, name: '', description: '', categoryId: '', metalTypeId: '',

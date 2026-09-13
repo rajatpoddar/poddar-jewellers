@@ -1,30 +1,28 @@
-import Link from 'next/link';
 import { logout } from '@/app/admin/login/actions';
+import { Button } from '@/components/ui/Button';
+import { LogoutIcon } from '@/components/ui/icons';
+import { NavLinks } from './NavLinks';
 
-const LINKS = [
-  { href: '/admin', label: 'Aaj ka Rate' },
-  { href: '/admin/products', label: 'Products' },
-  { href: '/admin/categories', label: 'Categories' },
-  { href: '/admin/metals', label: 'Metal types' },
-  { href: '/admin/settings', label: 'Settings' },
-];
-
+/**
+ * Two rows on purpose: who you are and whose shop this is on top, where you
+ * are underneath. The link list is the only interactive part that needs the
+ * current path, so it is the only client component here.
+ */
 export function Nav({ shopName, adminName }: { shopName: string; adminName: string }) {
   return (
-    <header className="border-b border-stone-200 bg-white">
-      <div className="max-w-5xl mx-auto px-5 py-4 flex flex-wrap items-center gap-x-6 gap-y-3">
-        <span className="font-semibold text-stone-900">{shopName}</span>
-        <nav className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
-          {LINKS.map((l) => (
-            <Link key={l.href} href={l.href} className="text-stone-600 hover:text-stone-900">
-              {l.label}
-            </Link>
-          ))}
-        </nav>
-        <form action={logout} className="ml-auto flex items-center gap-3">
-          <span className="text-sm text-stone-500">{adminName}</span>
-          <button type="submit" className="text-sm text-stone-500 underline">Logout</button>
-        </form>
+    <header className="border-b border-line bg-surface">
+      <div className="mx-auto max-w-5xl px-5">
+        <div className="flex items-center gap-4 py-3.5">
+          <span className="truncate font-display text-xl text-ink">{shopName}</span>
+          <span className="ml-auto hidden text-sm text-ink-faint sm:inline">{adminName}</span>
+          <form action={logout}>
+            <Button type="submit" intent="quiet" className="px-3">
+              <LogoutIcon />
+              Logout
+            </Button>
+          </form>
+        </div>
+        <NavLinks />
       </div>
     </header>
   );

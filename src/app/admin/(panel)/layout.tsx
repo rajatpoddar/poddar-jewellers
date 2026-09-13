@@ -20,9 +20,10 @@ export default async function PanelLayout({ children }: { children: ReactNode })
   const shop = await getShop();
 
   return (
-    <div className="min-h-screen bg-stone-50">
+    <div className="min-h-screen bg-ground">
       <Nav shopName={shop.name} adminName={admin.name} />
-      <main className="max-w-5xl mx-auto px-5 py-8">{children}</main>
+      {/* pb-24 keeps the last Save button clear of a phone's home indicator. */}
+      <main className="mx-auto max-w-5xl px-5 pb-24 pt-8">{children}</main>
     </div>
   );
 }

@@ -2,6 +2,11 @@ import { db } from '@/lib/db';
 import { getShop } from '@/lib/shop';
 import { updateCategory, deleteCategory } from './actions';
 import { NewCategoryForm } from './form';
+import { PageHeader, RowList, EmptyState } from '@/components/ui/Surface';
+import { Notice } from '@/components/ui/Notice';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Field';
+import { TrashIcon } from '@/components/ui/icons';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,41 +27,71 @@ export default async function CategoriesPage({
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-semibold text-stone-900">Categories</h1>
-        <p className="text-stone-600 mt-1">
-          Making charge khaali chhod dijiye to default <strong>{defaultPercent}%</strong> lagega.
-        </p>
-      </div>
+      <PageHeader
+        title="Categories"
+        description={
+          <>
+            Making charge khaali chhod dijiye to default <strong>{defaultPercent}%</strong> lagega.
+          </>
+        }
+      />
 
-      {error && (
-        <div className="border border-red-300 bg-red-50 rounded p-4 text-red-900">{error}</div>
-      )}
+      {error && <Notice tone="danger">{error}</Notice>}
 
-      <div className="bg-white border border-stone-200 rounded divide-y divide-stone-200">
+      <RowList>
+        {categories.length === 0 && (
+          <EmptyState title="Abhi koi category nahi hai">
+            Neeche se pehli category jodiye — jaise Necklace, Ring, Bangle.
+          </EmptyState>
+        )}
+
         {categories.map((c) => (
-          <div key={c.id} className="p-4 flex flex-wrap items-center gap-3">
-            <form action={updateCategory.bind(null, c.id)} className="flex flex-wrap items-center gap-3 flex-1">
-              <input name="name" defaultValue={c.name}
-                className="border border-stone-300 rounded px-3 py-2 flex-1 min-w-45" />
-              <span className="text-sm text-stone-500 min-w-32">
+          <div key={c.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
+            <form
+              action={updateCategory.bind(null, c.id)}
+              className="flex min-w-0 flex-1 flex-wrap items-center gap-3"
+            >
+              <Input
+                name="name"
+                defaultValue={c.name}
+                aria-label={`${c.name} ka naam`}
+                width="auto"
+                className="min-w-45 flex-1"
+              />
+              <span className="min-w-32 text-sm text-ink-faint">
                 {c.parent ? `under ${c.parent.name}` : 'top level'}
               </span>
-              <label className="flex items-center gap-2 text-sm">
-                <input name="makingPercent" inputMode="decimal" placeholder={String(defaultPercent)}
+              <label className="flex items-center gap-2 text-sm text-ink-muted">
+                <Input
+                  name="makingPercent"
+                  inputMode="decimal"
+                  numeric
+                  placeholder={String(defaultPercent)}
                   defaultValue={c.makingPercentBp === null ? '' : String(c.makingPercentBp / 100)}
-                  className="w-20 border border-stone-300 rounded px-2 py-2 tabular-nums" />
-                <span className="text-stone-500">% making</span>
+                  width="auto"
+                  className="w-20"
+                />
+                % making
               </label>
-              <button type="submit" className="text-sm underline text-stone-700">Save</button>
+              <Button type="submit" intent="secondary">
+                Save
+              </Button>
             </form>
-            <span className="text-sm text-stone-500 min-w-24">{c._count.products} products</span>
+
+            <span className="min-w-24 text-sm text-ink-faint">
+              {c._count.products} {c._count.products === 1 ? 'product' : 'products'}
+            </span>
+
+            {/* Deleting is the only irreversible thing on this screen, so it is
+                the only red thing on this screen. */}
             <form action={deleteCategory.bind(null, c.id)}>
-              <button type="submit" className="text-sm underline text-stone-500">Hataiye</button>
+              <Button type="submit" intent="danger" aria-label={`${c.name} category hataiye`}>
+                <TrashIcon />
+              </Button>
             </form>
           </div>
         ))}
-      </div>
+      </RowList>
 
       <NewCategoryForm
         parents={categories.filter((c) => !c.parentId).map((c) => ({ id: c.id, name: c.name }))}

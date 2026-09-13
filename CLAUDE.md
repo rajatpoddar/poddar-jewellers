@@ -60,12 +60,24 @@ nice-to-have.
    Not built until a second real customer exists: billing, self-serve signup,
    subdomain routing, tenant isolation.
 
+9. **No screen picks a colour, a font or a radius.** It names a meaning —
+   `bg-surface`, `text-ink-muted`, `intent="danger"` — and the token layer in
+   `src/app/globals.css` decides what that looks like, deriving everything from
+   the five branding values on the `Shop` row. `src/app/globals.css` is the only
+   file allowed to contain a hex. Screens never write a bare `<button>` or
+   `<input>`; `src/components/ui/` is the whole vocabulary.
+   **`src/lib/design-system.test.ts` enforces this** — it fails the suite on a
+   stock Tailwind palette class, a literal hex, an untokenised radius, a raw
+   `<img>` or an emoji, and names the replacement.
+   Read `docs/DESIGN-SYSTEM.md` before writing any interface code.
+
 ---
 
 ## Current state
 
 **Phase 1A is built and merged.** Price engine, database, and the full admin
-panel. 79 tests pass.
+panel. **The design system landed on top of it** — token layer, component
+vocabulary, and every admin screen rebuilt on both. 80 tests pass.
 
 **Phase 1B — the storefront — is not started.** `/` is a placeholder. Customers
 cannot see anything yet.
@@ -102,7 +114,8 @@ alternative are in `docs/DEPLOYMENT.md`.
 | `docs/STATUS.md` | What is built, what is next, what is blocked | Always, second |
 | [Phase 1 spec](docs/superpowers/specs/2026-09-13-phase1-catalog-price-engine-design.md) | **Source of truth** for the design: price engine, data model, storefront, deployment, sellability | Before any Phase 1 work |
 | [Phase 1A plan](docs/superpowers/plans/2026-09-13-phase1a-core-price-engine-admin.md) | The 19 tasks that built the admin, with an amendments section recording where reality differed | When touching something it built |
-| `docs/DECISIONS.md` | Append-only log, D1-D14, each with its reason | Before revisiting a settled choice |
+| `docs/DESIGN-SYSTEM.md` | **Source of truth for the interface**: tokens, components, the rules that are enforced | Before any UI work, always |
+| `docs/DECISIONS.md` | Append-only log, D1-D15, each with its reason | Before revisiting a settled choice |
 | `docs/PROJECT.md` | Shop facts, roadmap, open questions | When you need a real-world fact |
 | `docs/DEPLOYMENT.md` | NAS deploy, Cloudflare cache rules, standing this up for another shop, local setup | Deploying or onboarding a new shop |
 | `docs/ADMIN-GUIDE.md` | How to use the admin, written in Hinglish for the shop | Changing admin UX |
@@ -132,6 +145,18 @@ src/lib/
   *.server.ts        the database-backed halves, kept separate so unit tests
                      never pull Prisma into the test process
 
+src/components/ui/    the design system's component vocabulary. Screens use
+                      these and never a bare <button> or <input>.
+  Button.tsx          intent: primary | secondary | quiet | danger
+  Field.tsx           Field, Input, Textarea, Select, Checkbox
+  Surface.tsx         Card, CardFieldset, RowList, EmptyState, PageHeader
+  Notice.tsx          page-level messages, and Badge
+  icons.tsx           inline stroke SVGs — no icon library, no emoji
+
+src/app/globals.css   the token layer. THE only file allowed a hex colour.
+src/lib/branding.ts   Shop row → CSS custom properties, and the font registry
+                      next/font needs because it cannot take a runtime name
+
 src/auth/session.ts  signed cookie, jose
 src/proxy.ts         optimistic /admin gate (Next 16 renamed middleware → proxy)
 src/app/admin/
@@ -159,6 +184,10 @@ authorization solution — see D14.
 - **Customer-facing and admin copy is Hinglish in Latin script** — how the
   shop's customers actually read. Code, comments, commits and docs are English.
 - **Currency renders as `Rs 3,37,900`**, never `Rs 337,900`. Use `formatINR`.
+- **Digits that get compared carry `.numeric`** — every rupee amount, weight
+  and rate. Proportional figures do not line up in a column.
+- **Colour, radius and elevation are tokens**, never literals. New meaning →
+  new token in `globals.css`. New shade → you are doing it wrong. See Rule 9.
 
 ---
 

@@ -1,1 +1,149 @@
 @import "tailwindcss";
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Brand inputs — the only values a shop owns.
+
+   These five are written from the `Shop` row by the root layout (see
+   src/lib/branding.ts). The values below are defaults so that a page still
+   renders correctly before the database is reachable — they are NOT this
+   shop's identity, they are the fallback every deployment starts from.
+
+   Hard Rule 7: nothing below this block may name or imply one shop.
+   ────────────────────────────────────────────────────────────────────────── */
+:root {
+  --brand-primary: #8f621a;
+  --brand-ink: #1a1d1b;
+  --brand-ground: #f4f4f2;
+  --brand-font-display: Georgia, "Times New Roman", serif;
+  --brand-font-body: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Semantic tokens.
+
+   `inline` matters: it makes Tailwind emit `var(--color-ink)` into every
+   utility instead of copying today's hex in at build time. That is what lets
+   one build serve a second shop's colours by changing three values on a row.
+
+   Every colour here is derived from the three brand inputs with color-mix, so
+   a shop that picks a different primary gets a coherent set, not a gold UI
+   with one odd button. Status colours are deliberately NOT derived: red must
+   stay red whatever a shop chooses.
+   ────────────────────────────────────────────────────────────────────────── */
+@theme inline {
+  /* Type */
+  --font-display: var(--brand-font-display);
+  --font-body: var(--brand-font-body);
+
+  /* Text */
+  --color-ink: var(--brand-ink);
+  --color-ink-muted: color-mix(in oklab, var(--brand-ink) 66%, var(--brand-ground));
+  --color-ink-faint: color-mix(in oklab, var(--brand-ink) 45%, var(--brand-ground));
+
+  /* Ground and surfaces */
+  --color-ground: var(--brand-ground);
+  --color-surface: #ffffff;
+  --color-surface-sunk: color-mix(in oklab, var(--brand-ground) 92%, var(--brand-ink));
+
+  /* Lines */
+  --color-line: color-mix(in oklab, var(--brand-ink) 12%, var(--brand-ground));
+  --color-line-strong: color-mix(in oklab, var(--brand-ink) 26%, var(--brand-ground));
+
+  /* Brand */
+  --color-brand: var(--brand-primary);
+  --color-brand-strong: color-mix(in oklab, var(--brand-primary) 82%, var(--brand-ink));
+  --color-brand-on: #ffffff;
+  --color-brand-soft: color-mix(in oklab, var(--brand-primary) 10%, #ffffff);
+  --color-brand-line: color-mix(in oklab, var(--brand-primary) 32%, var(--brand-ground));
+
+  /* Status — fixed hues, warm-tinted to sit beside the brand */
+  --color-warn: #8a5a06;
+  --color-warn-soft: #fdf5e4;
+  --color-warn-line: #e7c98a;
+  --color-danger: #a8231b;
+  --color-danger-soft: #fdf0ee;
+  --color-danger-line: #eab5ae;
+  --color-good: #1d6b45;
+  --color-good-soft: #eef7f1;
+  --color-good-line: #a8d4bd;
+
+  /* Radii — editorial restraint, not rounded-everything */
+  --radius-field: 4px;
+  --radius-card: 6px;
+  --radius-pill: 999px;
+
+  /* Elevation — a hairline first, a shadow only when something floats */
+  --shadow-card: 0 1px 2px color-mix(in oklab, var(--brand-ink) 6%, transparent);
+  --shadow-raised: 0 6px 20px color-mix(in oklab, var(--brand-ink) 10%, transparent);
+
+  /* Motion — one timing for ordinary UI feedback, set as the default so a
+     bare `transition-colors` is already correct and no screen has to pick a
+     number. Anything slower is a deliberate exception, written inline. */
+  --ease-out-soft: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --default-transition-duration: 180ms;
+  --default-transition-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@layer base {
+  html {
+    background-color: var(--color-ground);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    text-size-adjust: 100%;
+  }
+
+  /* Display face is for headings only. Body copy stays in the body face at
+     16px so a 60-year-old shopkeeper can read it on a phone in daylight. */
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  p,
+  li {
+    text-wrap: pretty;
+  }
+
+  /* Priority 1, accessibility: the focus ring is never removed, only styled. */
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  ::selection {
+    background-color: var(--color-brand-soft);
+    color: var(--color-ink);
+  }
+
+  /* Form controls inherit the page's type instead of the browser's. */
+  input,
+  select,
+  textarea,
+  button {
+    font: inherit;
+    color: inherit;
+  }
+
+  /* Money and rates line up in columns only if the digits are fixed-width. */
+  .numeric {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

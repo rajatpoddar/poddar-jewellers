@@ -1,4 +1,6 @@
 import { getShop } from '@/lib/shop';
+import { DISPLAY_FONT_NAMES, BODY_FONT_NAMES } from '@/lib/branding';
+import { PageHeader } from '@/components/ui/Surface';
 import { SettingsForm } from './form';
 
 export const dynamic = 'force-dynamic';
@@ -11,11 +13,14 @@ export default async function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-semibold text-stone-900">Settings</h1>
-        <p className="text-stone-600 mt-1">Dukaan ki har jankari yahin se badalti hai.</p>
-      </div>
-      <SettingsForm shop={plain} />
+      <PageHeader title="Settings" description="Dukaan ki har jankari yahin se badalti hai." />
+      {/* The font lists come from the build's registry, not from this form, so
+          the shop can only pick a face this deployment actually carries. */}
+      <SettingsForm
+        shop={plain}
+        displayFonts={DISPLAY_FONT_NAMES}
+        bodyFonts={BODY_FONT_NAMES}
+      />
     </div>
   );
 }
