@@ -366,8 +366,9 @@ describe('formatINR', () => {
     expect(formatINR(33790000)).toBe('₹3,37,900');
   });
 
-  it('groups a seven-figure amount', () => {
-    expect(formatINR(1234567800)).toBe('₹12,34,568');
+  it('groups lakhs and crores the Indian way, not in thousands', () => {
+    expect(formatINR(1234567800)).toBe('₹1,23,45,678');
+    expect(formatINR(100000000)).toBe('₹10,00,000');
   });
 
   it('formats small amounts', () => {
@@ -432,7 +433,7 @@ export function formatINR(paise: number): string {
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `npm test -- src/lib/money.test.ts`
-Expected: PASS, 13 tests
+Expected: PASS, 15 tests
 
 - [ ] **Step 5: Commit**
 
