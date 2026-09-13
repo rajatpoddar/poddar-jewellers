@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from 'react';
 import { saveRate, type SaveRateState } from '@/app/admin/(panel)/actions';
+import { significantMoves } from '@/lib/rates';
 
 export interface RateField {
   metalTypeId: string;
@@ -21,22 +22,22 @@ export function RateForm({ fields }: { fields: RateField[] }) {
     ),
   );
 
-  const changes = fields.map((f) => {
-    const next = Number(values[f.metalTypeId]);
-    const pct =
-      f.previousRupees > 0 && Number.isFinite(next) && next > 0
-        ? ((next - f.previousRupees) / f.previousRupees) * 100
-        : 0;
-    return { ...f, next, pct };
-  });
+  const entries = fields.map((f) => ({
+    label: f.label,
+    previousRupees: f.previousRupees,
+    nextRupees: Number(values[f.metalTypeId]),
+  }));
 
-  const big = changes.filter((c) => Math.abs(c.pct) >= BIG_CHANGE_PERCENT);
+  // The threshold logic is a tested pure function in lib/rates — the dialog it
+  // drives cannot be exercised by an automated browser without blocking it.
+  const big = significantMoves(entries, BIG_CHANGE_PERCENT);
+  const bigByLabel = new Map(big.map((m) => [m.label, m]));
 
   function confirmBeforeSubmit(event: React.FormEvent<HTMLFormElement>) {
     if (big.length === 0) return;
     const lines = big.map(
-      (c) =>
-        `${c.label}: ₹${c.previousRupees.toLocaleString('en-IN')} → ₹${c.next.toLocaleString('en-IN')} (${c.pct > 0 ? '+' : ''}${c.pct.toFixed(1)}%)`,
+      (m) =>
+        `${m.label}: ₹${m.previousRupees.toLocaleString('en-IN')} → ₹${m.nextRupees.toLocaleString('en-IN')} (${m.percentChange > 0 ? '+' : ''}${m.percentChange.toFixed(1)}%)`,
     );
     // A confirm() dialog is deliberate here: it is the last stop before a typo
     // reaches every price on the website.
@@ -44,6 +45,16 @@ export function RateForm({ fields }: { fields: RateField[] }) {
       event.preventDefault();
     }
   }
+
+  const changes = fields.map((f) => {
+    const next = Number(values[f.metalTypeId]);
+    const move = bigByLabel.get(f.label);
+    const pct =
+      f.previousRupees > 0 && Number.isFinite(next) && next > 0
+        ? ((next - f.previousRupees) / f.previousRupees) * 100
+        : 0;
+    return { ...f, next, pct, isBig: move !== undefined };
+  });
 
   return (
     <form action={action} onSubmit={confirmBeforeSubmit} className="space-y-6">
@@ -64,7 +75,7 @@ export function RateForm({ fields }: { fields: RateField[] }) {
               <span className="text-sm text-stone-500 whitespace-nowrap">/ gram</span>
             </div>
             <span
-              className={`block text-sm ${Math.abs(f.pct) >= BIG_CHANGE_PERCENT ? 'text-amber-700 font-medium' : 'text-stone-500'}`}
+              className={`block text-sm ${f.isBig ? 'text-amber-700 font-medium' : 'text-stone-500'}`}
             >
               {f.previousRupees > 0
                 ? `Kal: ₹${f.previousRupees.toLocaleString('en-IN')}${f.pct !== 0 ? ` · ${f.pct > 0 ? '+' : ''}${f.pct.toFixed(1)}%` : ''}`

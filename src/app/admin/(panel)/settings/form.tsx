@@ -54,7 +54,7 @@ export function SettingsForm({ shop }: { shop: Record<string, string | number | 
 
       <Group title="Sampark">
         <Text name="phone" label="Phone" value={str('phone')} />
-        <Text name="whatsapp" label="WhatsApp" value={str('whatsapp')} hint="Country code ke saath, jaise 917250580175" />
+        <Text name="whatsapp" label="WhatsApp" value={str('whatsapp')} hint="Country code ke saath, bina + ke. Jaise 919876543210" />
         <Text name="email" label="Email" value={str('email')} />
         <Text name="instagramUrl" label="Instagram" value={str('instagramUrl')} />
         <Text name="facebookUrl" label="Facebook" value={str('facebookUrl')} />
