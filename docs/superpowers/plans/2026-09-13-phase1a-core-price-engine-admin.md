@@ -1186,7 +1186,7 @@ git commit -m "feat: rate staleness classification and weight parsing"
 ### Task 7: Database schema and Postgres
 
 **Files:**
-- Create: `prisma/schema.prisma`, `src/lib/db.ts`, `docker-compose.dev.yml`
+- Create: `prisma/schema.prisma`, `prisma.config.ts`, `src/lib/db.ts`, `docker-compose.dev.yml`
 
 **Interfaces:**
 - Consumes: nothing
@@ -1221,8 +1221,11 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
+
+// Prisma 7 removed `url` from the datasource block. The connection string for
+// migrate and introspect now lives in prisma.config.ts; the runtime client gets
+// its connection from a driver adapter. See Step 2b below.
 
 enum ProductStatus {
   DRAFT
@@ -1478,16 +1481,63 @@ model AdminUser {
 Note the absence of a `Purity` enum and of any `price` column. Metal types are
 rows; price is always computed.
 
+- [ ] **Step 2b: Create `prisma.config.ts`**
+
+Prisma 7 requires this file. It also does not read `.env` by itself.
+
+```ts
+import { defineConfig, env } from 'prisma/config';
+
+// Prisma 7 does not read .env by itself. Node's built-in loader handles it with
+// no extra dependency; in a container the variables are already in the
+// environment and there is no file to read, so a miss here is not an error.
+try {
+  process.loadEnvFile();
+} catch {
+  // No .env file — expected in production.
+}
+
+export default defineConfig({
+  schema: 'prisma/schema.prisma',
+  datasource: {
+    url: env('DATABASE_URL'),
+  },
+  migrations: {
+    seed: 'tsx prisma/seed.ts',
+  },
+});
+```
+
+The `prisma.seed` key in `package.json` is superseded by `migrations.seed` here
+— remove it.
+
 - [ ] **Step 3: Implement `src/lib/db.ts`**
+
+Install the adapter first: `npm install @prisma/adapter-pg@7.10.0`
 
 ```ts
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 
+// Prisma 7 takes its runtime connection through a driver adapter rather than a
+// `url` in the schema. The adapter owns the connection pool.
+function createClient(): PrismaClient {
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    throw new Error('DATABASE_URL is not set');
+  }
+
+  return new PrismaClient({
+    adapter: new PrismaPg({ connectionString }),
+    log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
+  });
+}
+
+// One client per process. Next.js hot-reloads modules in development, which
+// would otherwise open a new pool on every edit until Postgres refuses more.
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
-export const db =
-  globalForPrisma.prisma ??
-  new PrismaClient({ log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'] });
+export const db = globalForPrisma.prisma ?? createClient();
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db;
 ```
@@ -1495,10 +1545,20 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db;
 - [ ] **Step 4: Start Postgres and run the first migration**
 
 ```bash
-cp .env.example .env
+cp .env.example .env   # then set SESSION_SECRET and SEED_ADMIN_PASSWORD
 docker compose -f docker-compose.dev.yml up -d
 npx prisma migrate dev --name init
 ```
+
+On a machine that already runs Postgres, skip the compose file, point
+`DATABASE_URL` at that instance, and create the role and database once:
+
+```bash
+createuser -P poddar          # password: poddar
+createdb -O poddar poddar_jewellers
+psql -d postgres -c "ALTER ROLE poddar CREATEDB;"   # migrate dev needs a shadow database
+```
+
 Expected: migration applied, Prisma client generated.
 
 - [ ] **Step 5: Verify the schema is sound**
@@ -1508,14 +1568,29 @@ Expected: `The schema at prisma/schema.prisma is valid`, no type errors.
 
 Also confirm the two rules the schema must satisfy:
 ```bash
-grep -c "price " prisma/schema.prisma   # expect 0 — no price column
-grep -c "enum Purity" prisma/schema.prisma  # expect 0 — metal types are rows
+grep -cE '^\s+price\s' prisma/schema.prisma   # expect 0 — no price column
+grep -c 'enum Purity' prisma/schema.prisma     # expect 0 — metal types are rows
 ```
+
+Then confirm the client actually reaches the database. `npx tsx -e` compiles as
+CommonJS and rejects top-level `await`, so put this in a file and run it:
+
+```ts
+process.loadEnvFile();
+import('./src/lib/db.ts').then(async ({ db }) => {
+  const tables = await db.$queryRaw<Array<{ tablename: string }>>`
+    SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename`;
+  console.log(tables.map((t) => t.tablename).join(', '));
+  await db.$disconnect();
+});
+```
+
+Expected: all twelve tables plus `_prisma_migrations`.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add prisma/ src/lib/db.ts docker-compose.dev.yml
+git add prisma/ prisma.config.ts src/lib/db.ts docker-compose.dev.yml .env.example package.json
 git commit -m "feat: schema — shop, metal types as rows, catalog, rate lines"
 ```
 
@@ -4091,6 +4166,6 @@ git commit -m "feat: production container and deployment guide"
       subsequent edit does not remove them
 - [ ] Changing the default making charge in settings re-prices the catalog
 - [ ] Changing the shop name in settings changes it in the admin nav
-- [ ] `grep -c "price " prisma/schema.prisma` returns 0 — no price column exists
+- [ ] `grep -cE '^\s+price\s' prisma/schema.prisma` returns 0 — no price column exists
 - [ ] `grep -rn "Poddar\|7250580175\|Palojori" src/` returns nothing — no shop
       fact is read from source outside `prisma/seed.ts`

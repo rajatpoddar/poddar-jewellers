@@ -199,3 +199,26 @@ Local development runs PostgreSQL 14 (already installed via Homebrew) rather tha
 16; production is 16 in the container. The schema uses nothing version-specific.
 Docker is not installed on the development machine — it is needed only for the
 production image, which is built on the NAS.
+
+---
+
+### D13 — Prisma 7 config and driver adapter
+**2026-09-13**
+
+Prisma 7 removed `url` from the schema's `datasource` block. Two consequences,
+both adopted rather than worked around:
+
+1. **`prisma.config.ts`** now holds the migrate/introspect connection string and
+   the seed command (which supersedes the `prisma.seed` key in `package.json`).
+   Prisma 7 does not read `.env` on its own, so the config calls Node's built-in
+   `process.loadEnvFile()` inside a try/catch — no `dotenv` dependency, and a
+   missing file in a container is not an error.
+2. **The runtime client takes a driver adapter**: `@prisma/adapter-pg` wrapping
+   a `pg` pool, passed as `new PrismaClient({ adapter })`.
+
+Local development also needs `ALTER ROLE poddar CREATEDB`, because
+`prisma migrate dev` builds a shadow database to diff against. Production uses
+`prisma migrate deploy`, which does not.
+
+One testing note worth keeping: `npx tsx -e` compiles as CommonJS and rejects
+top-level `await`. Ad-hoc database checks go in a file, not in `-e`.

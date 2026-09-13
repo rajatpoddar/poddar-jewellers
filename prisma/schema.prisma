@@ -1,0 +1,262 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ProductStatus {
+  DRAFT
+  LIVE
+}
+
+/// One row per shop. Everything describing a shop or its business rules lives
+/// here and is editable from the admin panel — nothing may be hardcoded.
+///
+/// A real id, never a singleton pinned to 1: this software is sold to other
+/// jewellery shops, and the day it serves more than one from a single
+/// deployment, only `getShop()` has to change.
+model Shop {
+  id   String @id @default(cuid())
+  slug String @unique
+
+  // Identity
+  name     String
+  tagline  String?
+  logoPath String?
+
+  // Branding — so two customers do not get the same site with a different name
+  brandPrimary String @default("#8F621A")
+  brandInk     String @default("#1A1D1B")
+  brandGround  String @default("#F4F4F2")
+  fontDisplay  String @default("Instrument Serif")
+  fontBody     String @default("Karla")
+
+  // Contact
+  phone    String
+  whatsapp String
+  email    String
+
+  // Address
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  state        String
+  pincode      String
+  mapUrl       String?
+  hoursText    String
+
+  // Social
+  instagramUrl String?
+  facebookUrl  String?
+
+  // Pricing
+  defaultMakingPercentBp Int    @default(1500)
+  gstPercentBp           Int    @default(300)
+  roundingStepPaise      Int    @default(10000)
+  roundingSmallStepPaise Int    @default(1000)
+  roundingThresholdPaise Int    @default(1000000)
+  priceDisclaimer        String
+
+  // Rate staleness
+  rateWarnHours  Int    @default(24)
+  rateStaleHours Int    @default(48)
+  rateBannerText String
+
+  // Site copy
+  heroHeading    String
+  heroSubheading String
+  seoLocations   String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  metalTypes      MetalType[]
+  categories      Category[]
+  products        Product[]
+  rates           Rate[]
+  admins          AdminUser[]
+  attributeGroups AttributeGroup[]
+}
+
+/// The purities this shop deals in. Data, never an enum: another shop may carry
+/// 14K, Silver 925 or platinum, and must be able to add it from the admin panel.
+model MetalType {
+  id     String @id @default(cuid())
+  shopId String
+  shop   Shop   @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  /// Stable machine key, e.g. "GOLD_22K". Never changes once products use it.
+  key       String
+  /// What the shop and its customers see, e.g. "Gold 22K".
+  label     String
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
+
+  products  Product[]
+  rateLines RateLine[]
+
+  @@unique([shopId, key])
+  @@index([shopId, sortOrder])
+}
+
+/// One header per rate entry. The newest is live; the rest are history.
+model Rate {
+  id        String     @id @default(cuid())
+  shopId    String
+  shop      Shop       @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  enteredBy String
+  createdAt DateTime   @default(now())
+  lines     RateLine[]
+
+  @@index([shopId, createdAt])
+}
+
+/// One line per metal type per rate entry.
+model RateLine {
+  id                String    @id @default(cuid())
+  rateId            String
+  rate              Rate      @relation(fields: [rateId], references: [id], onDelete: Cascade)
+  metalTypeId       String
+  metalType         MetalType @relation(fields: [metalTypeId], references: [id], onDelete: Cascade)
+  pricePerGramPaise Int
+
+  @@unique([rateId, metalTypeId])
+  @@index([metalTypeId])
+}
+
+model Category {
+  id     String @id @default(cuid())
+  shopId String
+  shop   Shop   @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  slug     String
+  name     String
+  parentId String?
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryTree")
+
+  /// Basis points. Null means inherit from the parent, then from the shop default.
+  makingPercentBp Int?
+  sortOrder       Int  @default(0)
+  products        Product[]
+
+  @@unique([shopId, slug])
+  @@index([shopId, parentId])
+}
+
+model Product {
+  id     String @id @default(cuid())
+  shopId String
+  shop   Shop   @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  slug        String
+  name        String
+  description String?
+
+  metalTypeId String
+  metalType   MetalType @relation(fields: [metalTypeId], references: [id])
+
+  /// Basis points. Null means inherit from the category, then from the shop default.
+  makingPercentBp Int?
+  /// Fixed value of any stone or diamond. Does not scale with weight.
+  stoneValuePaise  Int     @default(0)
+  stoneDescription String?
+
+  categoryId String
+  category   Category      @relation(fields: [categoryId], references: [id])
+  status     ProductStatus @default(DRAFT)
+  featured   Boolean       @default(false)
+
+  /// Filter/sort cache ONLY. Never rendered as a price. Recomputed on rate save.
+  cachedPriceMinPaise Int?
+  cachedPriceMaxPaise Int?
+  cachedAt            DateTime?
+
+  weights    ProductWeight[]
+  images     ProductImage[]
+  attributes ProductAttribute[]
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  @@unique([shopId, slug])
+  @@index([shopId, categoryId, status])
+  @@index([shopId, status, cachedPriceMinPaise])
+  @@index([shopId, featured, status])
+  @@index([metalTypeId])
+}
+
+model ProductWeight {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  /// Integer milligrams. 23g is 23000.
+  weightMg  Int
+  sortOrder Int     @default(0)
+
+  @@unique([productId, weightMg])
+  @@index([productId])
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  /// Content-hashed base name, no extension. Variants are derived from it.
+  basePath  String
+  alt       String
+  width     Int
+  height    Int
+  sortOrder Int     @default(0)
+  isPrimary Boolean @default(false)
+
+  @@index([productId])
+}
+
+model AttributeGroup {
+  id     String @id @default(cuid())
+  shopId String
+  shop   Shop   @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  key        String
+  name       String
+  sortOrder  Int         @default(0)
+  attributes Attribute[]
+
+  @@unique([shopId, key])
+}
+
+model Attribute {
+  id      String         @id @default(cuid())
+  groupId String
+  group   AttributeGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  slug      String
+  name      String
+  sortOrder Int                @default(0)
+  products  ProductAttribute[]
+
+  @@unique([groupId, slug])
+}
+
+model ProductAttribute {
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  attributeId String
+  attribute   Attribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+
+  @@id([productId, attributeId])
+  @@index([attributeId])
+}
+
+model AdminUser {
+  id     String @id @default(cuid())
+  shopId String
+  shop   Shop   @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  username     String   @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now())
+}
