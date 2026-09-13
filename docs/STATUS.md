@@ -19,7 +19,12 @@
   - Content-hashed AVIF/WebP image pipeline
   - Production container and deployment guide
 
-71 unit tests pass. `tsc --noEmit` clean. Production build succeeds.
+79 unit tests pass. `tsc --noEmit` clean. Production build succeeds.
+
+One of those tests, `src/lib/no-hardcoded-shop.test.ts`, walks `src/` for
+shop-specific literals and fails the suite on a hit. It found two on its first
+run — the browser-tab title and a settings hint — which is precisely why it
+exists now rather than as a line in a checklist.
 
 ## Next
 
@@ -32,8 +37,13 @@
 - Domain not yet purchased
 - Real logo and real product photos — placeholders do not block the build
 - `docker compose build` has not been run: Docker is not installed on the
-  development machine. `npm run build` passes, so the application builds; the
-  image build itself is first exercised on the NAS.
+  development machine. `npm run build` passes and emits the standalone server,
+  so the application builds; the image itself is first exercised on the NAS.
+- The photo upload path through the product form has not been exercised.
+  `processUpload` has six unit tests; the multipart form wiring does not.
+- The rate-change `confirm()` dialog has not been clicked. Its threshold logic
+  is a tested pure function (`significantMoves`, seven cases); the dialog itself
+  cannot be driven by an automated browser without blocking it.
 
 ## Not yet built
 
