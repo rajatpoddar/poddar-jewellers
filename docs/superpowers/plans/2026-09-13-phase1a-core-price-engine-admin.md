@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** A working admin panel where the shop enters a daily metal rate and manages a product catalog, backed by a fully tested price engine that computes every product's price from weight and rate.
+**Goal:** A working admin panel where a jewellery shop enters a daily metal rate and manages a product catalog, backed by a fully tested price engine that computes every product's price from weight and rate.
 
-**Architecture:** All money is integer paise; all percentages are integer basis points; no float ever accumulates a rupee value. The price engine is a set of pure functions with no database or framework dependency, tested in isolation. Persistence is Prisma over Postgres. The admin is Next.js App Router server components with server actions. Saving a rate recomputes a per-product price range cache and revalidates cached pages.
+**Architecture:** All money is integer paise; all percentages are integer basis points; no float ever accumulates a rupee value. The price engine is a set of pure functions with no database or framework dependency, tested in isolation. Which purities a shop deals in is data, not an enum, so the daily rate screen builds itself from the shop's own metal types. Persistence is Prisma over Postgres. The admin is Next.js App Router server components with server actions. Saving a rate recomputes a per-product price range cache and revalidates cached pages.
 
 **Tech Stack:** Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS v4, PostgreSQL 16, Prisma 6, Vitest 3, jose, bcryptjs, sharp, Docker Compose.
 
@@ -12,25 +12,22 @@
 
 **Follows:** Phase 1B (storefront) is a separate plan, written after this one is complete.
 
-**Deliberately deferred to Phase 1B:** spec Sections 5 and 10 in full (every
-storefront page, the weight selector, the wishlist, the WhatsApp link, the
-`/rates` page, and the edge-caching work), the storefront half of Section 7 (the
-stale-rate banner — the admin warning is Task 13 here), and the Playwright suite
-from Section 11, which exists to drive browse-and-buy flows that do not exist
-yet. Everything else in the spec is covered below.
+**Deliberately deferred to Phase 1B:** spec Sections 5 and 10 in full (every storefront page, the weight selector, the wishlist, the WhatsApp link, the `/rates` page, and the edge-caching work), the storefront half of Section 7 (the stale-rate banner — the admin warning is Task 14 here), and the Playwright suite from Section 11, which exists to drive browse-and-buy flows that do not exist yet. Everything else in the spec is covered below.
 
 ## Global Constraints
 
-Copied from the spec and `CLAUDE.md`. Every task inherits these.
+From the spec and `CLAUDE.md`. Every task inherits these.
 
 - **Price is never stored.** No `price` column. The only persisted prices are `cachedPriceMinPaise` / `cachedPriceMaxPaise` on `Product`, used solely for filtering and sorting, recomputed on every rate save.
 - **Money is integer paise.** `Int` columns, integer arithmetic, `Math.round` at each step. Never accumulate rupees in a float.
 - **Percentages are integer basis points.** 15% is `1500`. 3% is `300`. Value = `paise * bp / 10000`.
 - **Estimates round up.** Nearest Rs 100 (`10000` paise) at or above Rs 10,000; nearest Rs 10 (`1000` paise) below it.
-- **No shop fact is hardcoded.** Shop name, address, phone, WhatsApp, email, logo, hours, social links, making default, GST percent, rounding steps, disclaimer copy, hero copy and SEO terms all live in the `Settings` row and are editable from admin. Seed values come from `docs/PROJECT.md`.
-- **Default making charge is 1500 bp (15%)**, overridable per category and per product. Most specific wins: product, then nearest ancestor category, then the settings default.
-- **GST is 300 bp (3%)** on metal + making + stone. Pending the shop's CA; it is a settings field so changing it is not a deploy.
-- **The daily admin screen stays a 30-second job.** Four rate inputs and a Save button. Nothing destructive reachable from it.
+- **Metal types are rows, never an enum.** A shop adds `SILVER_925` from the admin panel and the daily rate screen grows an input by itself. The engine takes rates as `Record<MetalKey, number>`.
+- **`Shop` is a real row with a real id**, never a singleton pinned to `id = 1`. Every query resolves its shop through `getShop()`. Every shop-owned table carries `shopId`.
+- **No shop fact is hardcoded.** Name, address, phone, WhatsApp, email, logo, branding colours and fonts, hours, social links, making default, GST percent, rounding steps, disclaimer copy, hero copy and SEO terms all live on the `Shop` row. Seed values come from `docs/PROJECT.md`.
+- **Default making charge is 1500 bp (15%)**, overridable per category and per product. Most specific wins: product, then nearest ancestor category, then the shop default.
+- **GST is 300 bp (3%)** on metal + making + stone. Pending the shop's CA; it is a `Shop` field so changing it is not a deploy.
+- **The daily admin screen stays a 30-second job.** One input per metal type and a Save button. Nothing destructive reachable from it.
 - **Currency renders with Indian digit grouping** — `Rs 3,37,900`, never `Rs 337,900`. Use `toLocaleString('en-IN')`.
 - **Node 22**, package manager `npm`.
 
@@ -41,6 +38,7 @@ Copied from the spec and `CLAUDE.md`. Every task inherits these.
 ```
 poddar-jewellers/
 ├── docker-compose.yml            # postgres + app, for the NAS
+├── docker-compose.dev.yml        # postgres only, for local work
 ├── Dockerfile                    # multi-stage, next standalone output
 ├── .env.example
 ├── package.json
@@ -49,60 +47,53 @@ poddar-jewellers/
 ├── vitest.config.ts
 ├── postcss.config.mjs
 ├── prisma/
-│   ├── schema.prisma             # all models
-│   └── seed.ts                   # settings, categories, attributes, admin user, samples
+│   ├── schema.prisma
+│   └── seed.ts
 ├── src/
 │   ├── lib/
 │   │   ├── money.ts              # paise arithmetic, INR formatting, rounding
 │   │   ├── money.test.ts
-│   │   ├── db.ts                 # Prisma client singleton
-│   │   ├── settings.ts           # typed settings read/write
-│   │   ├── rates.ts              # staleness classification (pure)
-│   │   ├── rates.test.ts
-│   │   ├── rates.server.ts       # latest rate, read from the database
-│   │   ├── price-cache.ts        # price range across weight options (pure)
-│   │   ├── price-cache.test.ts
-│   │   ├── price-cache.server.ts # recompute every product's cached range
 │   │   ├── weights.ts            # parse "20, 23, 25" into milligrams
 │   │   ├── weights.test.ts
-│   │   ├── images.ts             # sharp variant pipeline
-│   │   ├── images.test.ts
-│   │   └── pricing/
-│   │       ├── types.ts          # Purity, RateSet, PriceInput, PriceBreakdown
-│   │       ├── making.ts         # making-charge cascade
-│   │       ├── making.test.ts
-│   │       ├── engine.ts         # estimate()
-│   │       └── engine.test.ts
+│   │   ├── rates.ts              # staleness classification (pure)
+│   │   ├── rates.test.ts
+│   │   ├── price-cache.ts        # price range across weight options (pure)
+│   │   ├── price-cache.test.ts
+│   │   ├── pricing/
+│   │   │   ├── types.ts          # MetalKey, RateSet, PriceInput, PriceBreakdown
+│   │   │   ├── making.ts         # making-charge cascade
+│   │   │   ├── making.test.ts
+│   │   │   ├── engine.ts         # estimate()
+│   │   │   └── engine.test.ts
+│   │   ├── db.ts                 # Prisma client singleton
+│   │   ├── shop.ts               # getShop(), getPricingConfig() — server only
+│   │   ├── rates.server.ts       # latest rate for the shop
+│   │   ├── price-cache.server.ts # recompute every product's cached range
+│   │   └── images.ts             # sharp variant pipeline
 │   ├── auth/
-│   │   ├── session.ts            # jose sign/verify, cookie helpers
+│   │   ├── session.ts
 │   │   └── session.test.ts
 │   ├── middleware.ts             # protects /admin
+│   ├── components/admin/
+│   │   ├── Nav.tsx
+│   │   ├── RateForm.tsx
+│   │   └── ProductForm.tsx
 │   └── app/
 │       ├── globals.css
 │       ├── layout.tsx
+│       ├── page.tsx
 │       └── admin/
-│           ├── layout.tsx        # admin shell
+│           ├── layout.tsx
 │           ├── page.tsx          # DAILY: today's rate
-│           ├── actions.ts        # saveRate server action
-│           ├── login/
-│           │   ├── page.tsx
-│           │   └── actions.ts
-│           ├── products/
-│           │   ├── page.tsx
-│           │   ├── actions.ts
-│           │   ├── new/page.tsx
-│           │   └── [id]/page.tsx
-│           ├── categories/
-│           │   ├── page.tsx
-│           │   └── actions.ts
-│           └── settings/
-│               ├── page.tsx
-│               ├── form.tsx
-│               └── actions.ts
-└── src/components/admin/         # RateForm, ProductForm, CategoryTree, ImageUploader
+│           ├── actions.ts        # saveRate
+│           ├── login/{page.tsx,actions.ts}
+│           ├── metals/{page.tsx,actions.ts}
+│           ├── products/{page.tsx,actions.ts,new/page.tsx,[id]/page.tsx}
+│           ├── categories/{page.tsx,actions.ts}
+│           └── settings/{page.tsx,form.tsx,actions.ts}
 ```
 
-Split by responsibility: `lib/pricing/` is pure domain logic with no imports from `db.ts` or `next/*`, which is what lets it be tested without a database or a server.
+`src/lib/pricing/` is pure domain logic and imports nothing from `db.ts` or `next/*`. That is what lets it be exhaustively tested without a database or a server. Anything that touches Prisma lives in a `.server.ts` file so a unit test importing the pure module never drags Prisma into the test process.
 
 ---
 
@@ -113,7 +104,7 @@ Split by responsibility: `lib/pricing/` is pure domain logic with no imports fro
 
 **Interfaces:**
 - Consumes: nothing
-- Produces: a repo where `npm test` and `npm run build` both succeed
+- Produces: a repo where `npm test` and `npm run typecheck` both succeed
 
 - [ ] **Step 1: Create `package.json`**
 
@@ -129,7 +120,6 @@ Split by responsibility: `lib/pricing/` is pure domain logic with no imports fro
     "start": "next start",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
     "typecheck": "tsc --noEmit"
@@ -277,7 +267,7 @@ describe('test harness', () => {
 - [ ] **Step 7: Install and verify**
 
 Run: `npm install && npm test && npm run typecheck`
-Expected: one passing test, no type errors. (`npm run build` needs Prisma, which arrives in Task 7.)
+Expected: one passing test, no type errors.
 
 - [ ] **Step 8: Commit**
 
@@ -300,6 +290,7 @@ The foundation every later task's arithmetic rests on. Pure, no dependencies.
 - Consumes: nothing
 - Produces:
   - `rupeesToPaise(rupees: number): number`
+  - `paiseToRupees(paise: number): number`
   - `applyPercentBp(paise: number, bp: number): number`
   - `roundUpPaise(paise: number, stepPaise: number): number`
   - `formatINR(paise: number): string`
@@ -453,11 +444,12 @@ git commit -m "feat: integer-paise money utilities with Indian digit grouping"
 **Interfaces:**
 - Consumes: nothing
 - Produces:
-  - `type Purity = 'GOLD_24K' | 'GOLD_22K' | 'GOLD_18K' | 'SILVER_999'`
-  - `interface RateSet { GOLD_24K: number; GOLD_22K: number; GOLD_18K: number; SILVER_999: number }`
-  - `interface PriceInput { weightMg: number; purity: Purity; makingPercentBp: number; stoneValuePaise: number }`
-  - `interface PriceBreakdown { metalPaise; makingPaise; stonePaise; subtotalPaise; gstPaise; totalPaise; displayPaise }`
+  - `type MetalKey = string`
+  - `type RateSet = Readonly<Record<MetalKey, number>>` — paise per gram
+  - `interface PriceInput { weightMg: number; metalKey: MetalKey; makingPercentBp: number; stoneValuePaise: number }`
   - `interface RoundingConfig { stepPaise: number; smallStepPaise: number; thresholdPaise: number }`
+  - `interface PriceBreakdown { metalPaise; makingPaise; stonePaise; subtotalPaise; gstPaise; totalPaise; displayPaise }`
+  - `type MakingSource = { kind: 'product' } | { kind: 'category'; categoryName: string } | { kind: 'default' }`
   - `resolveMakingPercent(product, categoryChain, defaultBp): { percentBp: number; source: MakingSource }`
 
 - [ ] **Step 1: Write the failing tests**
@@ -500,7 +492,7 @@ describe('resolveMakingPercent', () => {
     expect(r.source).toEqual({ kind: 'category', categoryName: 'Anklets' });
   });
 
-  it('falls back to the settings default when nothing overrides', () => {
+  it('falls back to the shop default when nothing overrides', () => {
     const r = resolveMakingPercent(
       { makingPercentBp: null },
       [{ name: 'Payal', makingPercentBp: null }],
@@ -536,20 +528,23 @@ Expected: FAIL — `Failed to resolve import "./making"`
 - [ ] **Step 3: Implement `src/lib/pricing/types.ts`**
 
 ```ts
-export type Purity = 'GOLD_24K' | 'GOLD_22K' | 'GOLD_18K' | 'SILVER_999';
+/**
+ * A metal type's stable key, e.g. "GOLD_22K" or "SILVER_925".
+ *
+ * Deliberately a string and not a union: which purities a shop deals in is a
+ * fact about that shop, stored as rows in `metal_types`. Another shop running
+ * this software may carry 14K or platinum, and must be able to add it from the
+ * admin panel without a migration.
+ */
+export type MetalKey = string;
 
-/** Paise per gram, as entered by the shop each morning. */
-export interface RateSet {
-  GOLD_24K: number;
-  GOLD_22K: number;
-  GOLD_18K: number;
-  SILVER_999: number;
-}
+/** Paise per gram, keyed by metal type key, as entered by the shop each morning. */
+export type RateSet = Readonly<Record<MetalKey, number>>;
 
 export interface PriceInput {
   /** Integer milligrams. 23g is 23000. */
   weightMg: number;
-  purity: Purity;
+  metalKey: MetalKey;
   /** Already resolved through the cascade. Basis points. */
   makingPercentBp: number;
   /** Fixed rupee value of any stone or diamond. Does not scale with weight. */
@@ -592,13 +587,13 @@ export interface MakingResolution {
 
 /**
  * Most specific wins: the product's own override, then the nearest ancestor
- * category with an override, then the settings default.
+ * category with an override, then the shop default.
  *
- * `categoryChain` is ordered nearest-first: the product's own category, then
- * its parent, and so on up the tree.
+ * `categoryChain` is ordered nearest-first: the product's own category, then its
+ * parent, and so on up the tree.
  *
- * The admin UI renders `source` so a non-technical user can always see where
- * an effective percentage came from.
+ * The admin UI renders `source` so a non-technical user can always see where an
+ * effective percentage came from.
  */
 export function resolveMakingPercent(
   product: { makingPercentBp: number | null },
@@ -674,7 +669,7 @@ const ROUNDING: RoundingConfig = {
 describe('estimate', () => {
   it('prices the worked example from the spec: 23g of 22K at 15% making', () => {
     const r = estimate(
-      { weightMg: 23000, purity: 'GOLD_22K', makingPercentBp: 1500, stoneValuePaise: 0 },
+      { weightMg: 23000, metalKey: 'GOLD_22K', makingPercentBp: 1500, stoneValuePaise: 0 },
       RATES, GST_BP, ROUNDING,
     );
     expect(r.metalPaise).toBe(28520000);      // Rs 2,85,200
@@ -687,32 +682,40 @@ describe('estimate', () => {
   });
 
   it('scales with the selected weight', () => {
-    const base = { purity: 'GOLD_22K' as const, makingPercentBp: 1500, stoneValuePaise: 0 };
+    const base = { metalKey: 'GOLD_22K', makingPercentBp: 1500, stoneValuePaise: 0 };
     const at20 = estimate({ ...base, weightMg: 20000 }, RATES, GST_BP, ROUNDING);
     const at25 = estimate({ ...base, weightMg: 25000 }, RATES, GST_BP, ROUNDING);
     expect(at20.displayPaise).toBe(29380000); // Rs 2,93,800
     expect(at25.displayPaise).toBe(36720000); // Rs 3,67,200
   });
 
-  it('uses the rate for the product’s own purity', () => {
+  it('uses the rate for the product’s own metal type', () => {
     const base = { weightMg: 10000, makingPercentBp: 1500, stoneValuePaise: 0 };
-    expect(estimate({ ...base, purity: 'GOLD_24K' }, RATES, GST_BP, ROUNDING).metalPaise).toBe(13530000);
-    expect(estimate({ ...base, purity: 'GOLD_18K' }, RATES, GST_BP, ROUNDING).metalPaise).toBe(10150000);
-    expect(estimate({ ...base, purity: 'SILVER_999' }, RATES, GST_BP, ROUNDING).metalPaise).toBe(216000);
+    expect(estimate({ ...base, metalKey: 'GOLD_24K' }, RATES, GST_BP, ROUNDING).metalPaise).toBe(13530000);
+    expect(estimate({ ...base, metalKey: 'GOLD_18K' }, RATES, GST_BP, ROUNDING).metalPaise).toBe(10150000);
+    expect(estimate({ ...base, metalKey: 'SILVER_999' }, RATES, GST_BP, ROUNDING).metalPaise).toBe(216000);
+  });
+
+  it('works with a metal type this shop invented', () => {
+    // Proves the engine has no hardcoded list of purities.
+    const rates: RateSet = { ...RATES, SILVER_925: 20000 };
+    const r = estimate(
+      { weightMg: 30000, metalKey: 'SILVER_925', makingPercentBp: 1500, stoneValuePaise: 0 },
+      rates, GST_BP, ROUNDING,
+    );
+    expect(r.metalPaise).toBe(600000); // 30g x Rs 200
   });
 
   it('handles fractional gram weights', () => {
     const r = estimate(
-      { weightMg: 4200, purity: 'GOLD_18K', makingPercentBp: 1500, stoneValuePaise: 0 },
+      { weightMg: 4200, metalKey: 'GOLD_18K', makingPercentBp: 1500, stoneValuePaise: 0 },
       RATES, GST_BP, ROUNDING,
     );
     expect(r.metalPaise).toBe(4263000); // 4.2g x Rs 10,150 = Rs 42,630
   });
 
   it('adds a stone value that does not scale with weight', () => {
-    const withStone = {
-      purity: 'GOLD_18K' as const, makingPercentBp: 1500, stoneValuePaise: 4500000, // Rs 45,000
-    };
+    const withStone = { metalKey: 'GOLD_18K', makingPercentBp: 1500, stoneValuePaise: 4500000 };
     const light = estimate({ ...withStone, weightMg: 4200 }, RATES, GST_BP, ROUNDING);
     const heavy = estimate({ ...withStone, weightMg: 8400 }, RATES, GST_BP, ROUNDING);
     expect(light.stonePaise).toBe(4500000);
@@ -722,7 +725,7 @@ describe('estimate', () => {
 
   it('charges making on the metal value only, never on the stone', () => {
     const r = estimate(
-      { weightMg: 4200, purity: 'GOLD_18K', makingPercentBp: 1500, stoneValuePaise: 4500000 },
+      { weightMg: 4200, metalKey: 'GOLD_18K', makingPercentBp: 1500, stoneValuePaise: 4500000 },
       RATES, GST_BP, ROUNDING,
     );
     expect(r.makingPaise).toBe(639450); // 15% of Rs 42,630, not of Rs 87,630
@@ -730,7 +733,7 @@ describe('estimate', () => {
 
   it('charges GST on metal plus making plus stone', () => {
     const r = estimate(
-      { weightMg: 4200, purity: 'GOLD_18K', makingPercentBp: 1500, stoneValuePaise: 4500000 },
+      { weightMg: 4200, metalKey: 'GOLD_18K', makingPercentBp: 1500, stoneValuePaise: 4500000 },
       RATES, GST_BP, ROUNDING,
     );
     expect(r.subtotalPaise).toBe(4263000 + 639450 + 4500000);
@@ -739,7 +742,7 @@ describe('estimate', () => {
 
   it('rounds up to the nearest Rs 10 below the Rs 10,000 threshold', () => {
     const r = estimate(
-      { weightMg: 30000, purity: 'SILVER_999', makingPercentBp: 1500, stoneValuePaise: 0 },
+      { weightMg: 30000, metalKey: 'SILVER_999', makingPercentBp: 1500, stoneValuePaise: 0 },
       RATES, GST_BP, ROUNDING,
     );
     expect(r.totalPaise).toBe(767448);   // Rs 7,674.48
@@ -749,7 +752,7 @@ describe('estimate', () => {
   it('never displays less than the true total', () => {
     for (let mg = 1000; mg <= 60000; mg += 137) {
       const r = estimate(
-        { weightMg: mg, purity: 'GOLD_22K', makingPercentBp: 1500, stoneValuePaise: 0 },
+        { weightMg: mg, metalKey: 'GOLD_22K', makingPercentBp: 1500, stoneValuePaise: 0 },
         RATES, GST_BP, ROUNDING,
       );
       expect(r.displayPaise).toBeGreaterThanOrEqual(r.totalPaise);
@@ -758,27 +761,35 @@ describe('estimate', () => {
 
   it('handles a zero making charge', () => {
     const r = estimate(
-      { weightMg: 23000, purity: 'GOLD_22K', makingPercentBp: 0, stoneValuePaise: 0 },
+      { weightMg: 23000, metalKey: 'GOLD_22K', makingPercentBp: 0, stoneValuePaise: 0 },
       RATES, GST_BP, ROUNDING,
     );
     expect(r.makingPaise).toBe(0);
     expect(r.subtotalPaise).toBe(28520000);
   });
 
-  it('throws when the rate for the product’s purity is missing', () => {
-    const broken = { ...RATES, GOLD_22K: 0 };
+  it('throws when today’s rates carry no line for this metal type', () => {
     expect(() =>
       estimate(
-        { weightMg: 23000, purity: 'GOLD_22K', makingPercentBp: 1500, stoneValuePaise: 0 },
-        broken, GST_BP, ROUNDING,
+        { weightMg: 23000, metalKey: 'PLATINUM_950', makingPercentBp: 1500, stoneValuePaise: 0 },
+        RATES, GST_BP, ROUNDING,
       ),
-    ).toThrow(/rate/i);
+    ).toThrow(/PLATINUM_950/);
+  });
+
+  it('throws rather than picking up an inherited Object property as a rate', () => {
+    expect(() =>
+      estimate(
+        { weightMg: 23000, metalKey: 'toString', makingPercentBp: 1500, stoneValuePaise: 0 },
+        RATES, GST_BP, ROUNDING,
+      ),
+    ).toThrow(/toString/);
   });
 
   it('rejects a non-positive weight', () => {
     expect(() =>
       estimate(
-        { weightMg: 0, purity: 'GOLD_22K', makingPercentBp: 1500, stoneValuePaise: 0 },
+        { weightMg: 0, metalKey: 'GOLD_22K', makingPercentBp: 1500, stoneValuePaise: 0 },
         RATES, GST_BP, ROUNDING,
       ),
     ).toThrow(/weight/i);
@@ -803,13 +814,12 @@ import type { PriceBreakdown, PriceInput, RateSet, RoundingConfig } from './type
  * Pure: no database, no clock, no framework. Everything it needs arrives as an
  * argument, which is what makes it exhaustively testable.
  *
- *   metal    = weight x rate for the product's purity
+ *   metal    = weight x rate for the product's metal type
  *   making   = metal x makingPercent          (metal only — never the stone)
  *   stone    = fixed, does not scale with weight
  *   subtotal = metal + making + stone
  *   gst      = subtotal x gstPercent
- *   total    = subtotal + gst
- *   display  = total, rounded UP
+ *   display  = subtotal + gst, rounded UP
  */
 export function estimate(
   input: PriceInput,
@@ -821,9 +831,14 @@ export function estimate(
     throw new Error(`estimate: weight must be a positive integer in milligrams, got ${input.weightMg}`);
   }
 
-  const ratePaisePerGram = rates[input.purity];
-  if (!Number.isInteger(ratePaisePerGram) || ratePaisePerGram <= 0) {
-    throw new Error(`estimate: no usable rate for purity ${input.purity}`);
+  // `hasOwnProperty`, not a truthiness check: rates is a plain record keyed by
+  // shop-defined strings, and a key like "toString" would otherwise resolve to
+  // an inherited function rather than a rate.
+  const hasRate = Object.prototype.hasOwnProperty.call(rates, input.metalKey);
+  const ratePaisePerGram = hasRate ? rates[input.metalKey] : undefined;
+
+  if (typeof ratePaisePerGram !== 'number' || !Number.isInteger(ratePaisePerGram) || ratePaisePerGram <= 0) {
+    throw new Error(`estimate: today's rates carry no usable line for metal type "${input.metalKey}"`);
   }
 
   const metalPaise = Math.round((input.weightMg * ratePaisePerGram) / 1000);
@@ -834,9 +849,7 @@ export function estimate(
   const gstPaise = applyPercentBp(subtotalPaise, gstPercentBp);
   const totalPaise = subtotalPaise + gstPaise;
 
-  const step =
-    totalPaise >= rounding.thresholdPaise ? rounding.stepPaise : rounding.smallStepPaise;
-  const displayPaise = roundUpPaise(totalPaise, step);
+  const step = totalPaise >= rounding.thresholdPaise ? rounding.stepPaise : rounding.smallStepPaise;
 
   return {
     metalPaise,
@@ -845,7 +858,7 @@ export function estimate(
     subtotalPaise,
     gstPaise,
     totalPaise,
-    displayPaise,
+    displayPaise: roundUpPaise(totalPaise, step),
   };
 }
 ```
@@ -853,7 +866,7 @@ export function estimate(
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `npm test -- src/lib/pricing/engine.test.ts`
-Expected: PASS, 12 tests
+Expected: PASS, 14 tests
 
 - [ ] **Step 5: Commit**
 
@@ -872,7 +885,7 @@ git commit -m "feat: price engine — weight x rate, making, stone, GST, round u
 
 **Interfaces:**
 - Consumes: `pricing/engine.ts`, `pricing/types.ts`
-- Produces: `priceRange(weightsMg: number[], base: Omit<PriceInput,'weightMg'>, rates, gstBp, rounding): { minPaise: number; maxPaise: number }`
+- Produces: `priceRange(weightsMg: number[], base: Omit<PriceInput, 'weightMg'>, rates: RateSet, gstPercentBp: number, rounding: RoundingConfig): { minPaise: number; maxPaise: number }`
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -889,7 +902,7 @@ const GST_BP = 300;
 const ROUNDING: RoundingConfig = {
   stepPaise: 10000, smallStepPaise: 1000, thresholdPaise: 1000000,
 };
-const BASE = { purity: 'GOLD_22K' as const, makingPercentBp: 1500, stoneValuePaise: 0 };
+const BASE = { metalKey: 'GOLD_22K', makingPercentBp: 1500, stoneValuePaise: 0 };
 
 describe('priceRange', () => {
   it('spans the cheapest and dearest weight options', () => {
@@ -930,9 +943,9 @@ import type { PriceInput, RateSet, RoundingConfig } from './pricing/types';
 /**
  * A product's cheapest and dearest weight option, at today's rate.
  *
- * Persisted on Product so that listing pages can filter and sort by price
- * without recomputing the whole catalog on every request. Recomputed for every
- * product whenever a rate is saved.
+ * Persisted on Product so listing pages can filter and sort by price without
+ * recomputing the whole catalog on every request. Recomputed for every product
+ * whenever a rate is saved.
  */
 export function priceRange(
   weightsMg: number[],
@@ -967,18 +980,21 @@ git commit -m "feat: per-product price range for listing filters"
 
 ---
 
-### Task 6: Rate staleness
+### Task 6: Rate staleness and weight parsing
+
+Two small pure helpers, grouped because neither carries a task's worth of work alone.
 
 **Files:**
-- Create: `src/lib/rates.ts`
-- Test: `src/lib/rates.test.ts`
+- Create: `src/lib/rates.ts`, `src/lib/weights.ts`
+- Test: `src/lib/rates.test.ts`, `src/lib/weights.test.ts`
 
 **Interfaces:**
-- Consumes: nothing (pure half only; the database half arrives in Task 8)
+- Consumes: nothing
 - Produces:
   - `type RateStatus = 'FRESH' | 'WARN' | 'STALE'`
   - `rateStatus(enteredAt: Date, now: Date, warnHours: number, staleHours: number): RateStatus`
   - `percentChangeBp(previousPaise: number, nextPaise: number): number`
+  - `parseWeights(raw: string): number[]` — milligrams, sorted, deduplicated
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1036,10 +1052,48 @@ describe('percentChangeBp', () => {
 });
 ```
 
+`src/lib/weights.test.ts`:
+```ts
+import { describe, it, expect } from 'vitest';
+import { parseWeights } from './weights';
+
+describe('parseWeights', () => {
+  it('parses a comma-separated list into milligrams', () => {
+    expect(parseWeights('20, 23, 25')).toEqual([20000, 23000, 25000]);
+  });
+
+  it('accepts a g suffix and stray whitespace', () => {
+    expect(parseWeights('20g  23g\n25g')).toEqual([20000, 23000, 25000]);
+  });
+
+  it('handles fractional grams', () => {
+    expect(parseWeights('4.2, 5')).toEqual([4200, 5000]);
+  });
+
+  it('sorts ascending regardless of input order', () => {
+    expect(parseWeights('25, 20, 23')).toEqual([20000, 23000, 25000]);
+  });
+
+  it('removes duplicates', () => {
+    expect(parseWeights('20, 20, 23')).toEqual([20000, 23000]);
+  });
+
+  it('rejects a non-numeric entry', () => {
+    expect(() => parseWeights('20, bees, 25')).toThrow(/weight/i);
+  });
+
+  it('rejects zero, negative and empty input', () => {
+    expect(() => parseWeights('20, 0')).toThrow(/weight/i);
+    expect(() => parseWeights('-5')).toThrow(/weight/i);
+    expect(() => parseWeights('   ')).toThrow(/weight/i);
+  });
+});
+```
+
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `npm test -- src/lib/rates.test.ts`
-Expected: FAIL — `Failed to resolve import "./rates"`
+Run: `npm test -- src/lib/rates.test.ts src/lib/weights.test.ts`
+Expected: FAIL — both imports unresolved
 
 - [ ] **Step 3: Implement `src/lib/rates.ts`**
 
@@ -1072,8 +1126,8 @@ export function rateStatus(
 
 /**
  * Change from the previous rate, in basis points, for the admin's save
- * confirmation. A typo of one extra digit shows up here as a huge number
- * before it ever reaches a customer.
+ * confirmation. A typo of one extra digit shows up here as a huge number before
+ * it ever reaches a customer.
  */
 export function percentChangeBp(previousPaise: number, nextPaise: number): number {
   if (previousPaise <= 0) return 0;
@@ -1081,16 +1135,38 @@ export function percentChangeBp(previousPaise: number, nextPaise: number): numbe
 }
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [ ] **Step 4: Implement `src/lib/weights.ts`**
 
-Run: `npm test -- src/lib/rates.test.ts`
-Expected: PASS, 10 tests
+Kept out of the server-action file deliberately: a `'use server'` module may only export async functions, and this parser is worth testing on its own.
 
-- [ ] **Step 5: Commit**
+```ts
+/** "20, 23, 25" and "20g 23g 25g" both parse to [20000, 23000, 25000]. */
+export function parseWeights(raw: string): number[] {
+  const grams = raw
+    .split(/[,\s]+/)
+    .map((piece) => piece.replace(/g$/i, '').trim())
+    .filter(Boolean)
+    .map(Number);
+
+  if (grams.length === 0 || grams.some((g) => !Number.isFinite(g) || g <= 0)) {
+    throw new Error('Weight sahi number me likhiye, jaise: 20, 23, 25');
+  }
+
+  const mg = grams.map((g) => Math.round(g * 1000));
+  return [...new Set(mg)].sort((a, b) => a - b);
+}
+```
+
+- [ ] **Step 5: Run the tests to verify they pass**
+
+Run: `npm test -- src/lib/rates.test.ts src/lib/weights.test.ts`
+Expected: PASS, 17 tests
+
+- [ ] **Step 6: Commit**
 
 ```bash
-git add src/lib/rates.ts src/lib/rates.test.ts
-git commit -m "feat: rate staleness classification and change detection"
+git add src/lib/rates.ts src/lib/rates.test.ts src/lib/weights.ts src/lib/weights.test.ts
+git commit -m "feat: rate staleness classification and weight parsing"
 ```
 
 ---
@@ -1101,8 +1177,8 @@ git commit -m "feat: rate staleness classification and change detection"
 - Create: `prisma/schema.prisma`, `src/lib/db.ts`, `docker-compose.dev.yml`
 
 **Interfaces:**
-- Consumes: `pricing/types.ts` (the `Purity` values must match the Prisma enum exactly)
-- Produces: Prisma models `Rate`, `Category`, `Product`, `ProductWeight`, `ProductImage`, `AttributeGroup`, `Attribute`, `ProductAttribute`, `Settings`, `AdminUser`; and `db` — the Prisma client singleton
+- Consumes: nothing
+- Produces: Prisma models `Shop`, `MetalType`, `Rate`, `RateLine`, `Category`, `Product`, `ProductWeight`, `ProductImage`, `AttributeGroup`, `Attribute`, `ProductAttribute`, `AdminUser`; and `db` — the Prisma client singleton
 
 - [ ] **Step 1: Create `docker-compose.dev.yml` for a local Postgres**
 
@@ -1136,81 +1212,183 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Purity {
-  GOLD_24K
-  GOLD_22K
-  GOLD_18K
-  SILVER_999
-}
-
-enum MetalType {
-  GOLD
-  SILVER
-  DIAMOND
-}
-
 enum ProductStatus {
   DRAFT
   LIVE
 }
 
-/// One row per rate entry. The newest row is live; the rest are history.
-model Rate {
-  id             String   @id @default(cuid())
-  gold24kPaise   Int
-  gold22kPaise   Int
-  gold18kPaise   Int
-  silver999Paise Int
-  enteredBy      String
-  createdAt      DateTime @default(now())
+/// One row per shop. Everything describing a shop or its business rules lives
+/// here and is editable from the admin panel — nothing may be hardcoded.
+///
+/// A real id, never a singleton pinned to 1: this software is sold to other
+/// jewellery shops, and the day it serves more than one from a single
+/// deployment, only `getShop()` has to change.
+model Shop {
+  id   String @id @default(cuid())
+  slug String @unique
 
-  @@index([createdAt])
+  // Identity
+  name     String
+  tagline  String?
+  logoPath String?
+
+  // Branding — so two customers do not get the same site with a different name
+  brandPrimary String @default("#8F621A")
+  brandInk     String @default("#1A1D1B")
+  brandGround  String @default("#F4F4F2")
+  fontDisplay  String @default("Instrument Serif")
+  fontBody     String @default("Karla")
+
+  // Contact
+  phone    String
+  whatsapp String
+  email    String
+
+  // Address
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  state        String
+  pincode      String
+  mapUrl       String?
+  hoursText    String
+
+  // Social
+  instagramUrl String?
+  facebookUrl  String?
+
+  // Pricing
+  defaultMakingPercentBp Int @default(1500)
+  gstPercentBp           Int @default(300)
+  roundingStepPaise      Int @default(10000)
+  roundingSmallStepPaise Int @default(1000)
+  roundingThresholdPaise Int @default(1000000)
+  priceDisclaimer        String
+
+  // Rate staleness
+  rateWarnHours  Int    @default(24)
+  rateStaleHours Int    @default(48)
+  rateBannerText String
+
+  // Site copy
+  heroHeading    String
+  heroSubheading String
+  seoLocations   String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  metalTypes      MetalType[]
+  categories      Category[]
+  products        Product[]
+  rates           Rate[]
+  admins          AdminUser[]
+  attributeGroups AttributeGroup[]
+}
+
+/// The purities this shop deals in. Data, never an enum: another shop may carry
+/// 14K, Silver 925 or platinum, and must be able to add it from the admin panel.
+model MetalType {
+  id        String  @id @default(cuid())
+  shopId    String
+  shop      Shop    @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  /// Stable machine key, e.g. "GOLD_22K". Never changes once products use it.
+  key       String
+  /// What the shop and its customers see, e.g. "Gold 22K".
+  label     String
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
+
+  products  Product[]
+  rateLines RateLine[]
+
+  @@unique([shopId, key])
+  @@index([shopId, sortOrder])
+}
+
+/// One header per rate entry. The newest is live; the rest are history.
+model Rate {
+  id        String     @id @default(cuid())
+  shopId    String
+  shop      Shop       @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  enteredBy String
+  createdAt DateTime   @default(now())
+  lines     RateLine[]
+
+  @@index([shopId, createdAt])
+}
+
+/// One line per metal type per rate entry.
+model RateLine {
+  id                String    @id @default(cuid())
+  rateId            String
+  rate              Rate      @relation(fields: [rateId], references: [id], onDelete: Cascade)
+  metalTypeId       String
+  metalType         MetalType @relation(fields: [metalTypeId], references: [id], onDelete: Cascade)
+  pricePerGramPaise Int
+
+  @@unique([rateId, metalTypeId])
+  @@index([metalTypeId])
 }
 
 model Category {
-  id              String     @id @default(cuid())
-  slug            String     @unique
+  id     String @id @default(cuid())
+  shopId String
+  shop   Shop   @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  slug            String
   name            String
   parentId        String?
   parent          Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
   children        Category[] @relation("CategoryTree")
-  /// Basis points. Null means inherit from the parent, then from settings.
+  /// Basis points. Null means inherit from the parent, then from the shop default.
   makingPercentBp Int?
   sortOrder       Int        @default(0)
   products        Product[]
 
-  @@index([parentId])
+  @@unique([shopId, slug])
+  @@index([shopId, parentId])
 }
 
 model Product {
-  id                  String             @id @default(cuid())
-  slug                String             @unique
-  name                String
-  description         String?
-  metalType           MetalType
-  purity              Purity
-  /// Basis points. Null means inherit from the category, then from settings.
-  makingPercentBp     Int?
+  id     String @id @default(cuid())
+  shopId String
+  shop   Shop   @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  slug        String
+  name        String
+  description String?
+
+  metalTypeId String
+  metalType   MetalType @relation(fields: [metalTypeId], references: [id])
+
+  /// Basis points. Null means inherit from the category, then from the shop default.
+  makingPercentBp Int?
   /// Fixed value of any stone or diamond. Does not scale with weight.
-  stoneValuePaise     Int                @default(0)
-  stoneDescription    String?
-  categoryId          String
-  category            Category           @relation(fields: [categoryId], references: [id])
-  status              ProductStatus      @default(DRAFT)
-  featured            Boolean            @default(false)
+  stoneValuePaise  Int     @default(0)
+  stoneDescription String?
+
+  categoryId String
+  category   Category      @relation(fields: [categoryId], references: [id])
+  status     ProductStatus @default(DRAFT)
+  featured   Boolean       @default(false)
+
   /// Filter/sort cache ONLY. Never rendered as a price. Recomputed on rate save.
   cachedPriceMinPaise Int?
   cachedPriceMaxPaise Int?
   cachedAt            DateTime?
-  weights             ProductWeight[]
-  images              ProductImage[]
-  attributes          ProductAttribute[]
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
 
-  @@index([categoryId, status])
-  @@index([status, cachedPriceMinPaise])
-  @@index([featured, status])
+  weights    ProductWeight[]
+  images     ProductImage[]
+  attributes ProductAttribute[]
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  @@unique([shopId, slug])
+  @@index([shopId, categoryId, status])
+  @@index([shopId, status, cachedPriceMinPaise])
+  @@index([shopId, featured, status])
+  @@index([metalTypeId])
 }
 
 model ProductWeight {
@@ -1242,10 +1420,14 @@ model ProductImage {
 
 model AttributeGroup {
   id         String      @id @default(cuid())
-  key        String      @unique
+  shopId     String
+  shop       Shop        @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  key        String
   name       String
   sortOrder  Int         @default(0)
   attributes Attribute[]
+
+  @@unique([shopId, key])
 }
 
 model Attribute {
@@ -1270,56 +1452,19 @@ model ProductAttribute {
   @@index([attributeId])
 }
 
-/// Single row, id = 1. Everything describing the shop or the business lives
-/// here and is editable from the admin panel. Nothing here may be hardcoded.
-model Settings {
-  id Int @id @default(1)
-
-  shopName String
-  tagline  String?
-  logoPath String?
-
-  phone    String
-  whatsapp String
-  email    String
-
-  addressLine1 String
-  addressLine2 String?
-  city         String
-  state        String
-  pincode      String
-  mapUrl       String?
-  hoursText    String
-
-  instagramUrl String?
-  facebookUrl  String?
-
-  defaultMakingPercentBp Int @default(1500)
-  gstPercentBp           Int @default(300)
-  roundingStepPaise      Int @default(10000)
-  roundingSmallStepPaise Int @default(1000)
-  roundingThresholdPaise Int @default(1000000)
-
-  priceDisclaimer String
-  rateWarnHours   Int    @default(24)
-  rateStaleHours  Int    @default(48)
-  rateBannerText  String
-
-  heroHeading    String
-  heroSubheading String
-  seoLocations   String
-
-  updatedAt DateTime @updatedAt
-}
-
 model AdminUser {
   id           String   @id @default(cuid())
+  shopId       String
+  shop         Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
   username     String   @unique
   passwordHash String
   name         String
   createdAt    DateTime @default(now())
 }
 ```
+
+Note the absence of a `Purity` enum and of any `price` column. Metal types are
+rows; price is always computed.
 
 - [ ] **Step 3: Implement `src/lib/db.ts`**
 
@@ -1349,32 +1494,38 @@ Expected: migration applied, Prisma client generated.
 Run: `npx prisma validate && npm run typecheck`
 Expected: `The schema at prisma/schema.prisma is valid`, no type errors.
 
+Also confirm the two rules the schema must satisfy:
+```bash
+grep -c "price " prisma/schema.prisma   # expect 0 — no price column
+grep -c "enum Purity" prisma/schema.prisma  # expect 0 — metal types are rows
+```
+
 - [ ] **Step 6: Commit**
 
 ```bash
 git add prisma/ src/lib/db.ts docker-compose.dev.yml
-git commit -m "feat: database schema for rates, catalog, settings and admin users"
+git commit -m "feat: schema — shop, metal types as rows, catalog, rate lines"
 ```
 
 ---
 
-### Task 8: Settings module and rate reader
+### Task 8: Shop context and rate reader
 
-Bridges the pure engine to the database. Settings are read on nearly every request, so they are cached per-request.
+The bridge from the pure engine to the database. Every shop-scoped query starts here.
 
 **Files:**
-- Create: `src/lib/settings.ts`
-- Create: `src/lib/rates.server.ts`
+- Create: `src/lib/shop.ts`, `src/lib/rates.server.ts`
 
 **Interfaces:**
 - Consumes: `db.ts`, `pricing/types.ts`, `rates.ts` (for `rateStatus`)
 - Produces:
-  - `getSettings(): Promise<Settings>`
+  - `getShop(): Promise<Shop>`
   - `getPricingConfig(): Promise<{ gstPercentBp: number; defaultMakingPercentBp: number; rounding: RoundingConfig }>`
+  - `getMetalTypes(): Promise<MetalType[]>` — active only, in sort order
   - `getLatestRate(): Promise<{ rates: RateSet; enteredAt: Date; enteredBy: string } | null>`
   - `getRateSnapshot(): Promise<{ rates: RateSet; enteredAt: Date; status: RateStatus } | null>`
 
-- [ ] **Step 1: Implement `src/lib/settings.ts`**
+- [ ] **Step 1: Implement `src/lib/shop.ts`**
 
 ```ts
 import { cache } from 'react';
@@ -1382,15 +1533,22 @@ import { db } from './db';
 import type { RoundingConfig } from './pricing/types';
 
 /**
- * Settings are read on nearly every request. `cache` deduplicates the read
- * within a single render pass.
+ * The shop this request belongs to.
+ *
+ * Today there is exactly one, so this returns it. This software is sold one
+ * deployment per shop; the day a deployment serves several, THIS FUNCTION is the
+ * only thing that changes — it resolves the shop from the request's domain
+ * instead. Every shop-owned table already carries `shopId`, so nothing else has
+ * to move.
+ *
+ * Never read a shop row any other way. `cache` deduplicates within a render.
  */
-export const getSettings = cache(async () => {
-  const settings = await db.settings.findUnique({ where: { id: 1 } });
-  if (!settings) {
-    throw new Error('Settings row is missing. Run `npm run db:seed`.');
+export const getShop = cache(async () => {
+  const shop = await db.shop.findFirst({ orderBy: { createdAt: 'asc' } });
+  if (!shop) {
+    throw new Error('No shop row found. Run `npm run db:seed`.');
   }
-  return settings;
+  return shop;
 });
 
 export const getPricingConfig = cache(async (): Promise<{
@@ -1398,16 +1556,25 @@ export const getPricingConfig = cache(async (): Promise<{
   defaultMakingPercentBp: number;
   rounding: RoundingConfig;
 }> => {
-  const s = await getSettings();
+  const shop = await getShop();
   return {
-    gstPercentBp: s.gstPercentBp,
-    defaultMakingPercentBp: s.defaultMakingPercentBp,
+    gstPercentBp: shop.gstPercentBp,
+    defaultMakingPercentBp: shop.defaultMakingPercentBp,
     rounding: {
-      stepPaise: s.roundingStepPaise,
-      smallStepPaise: s.roundingSmallStepPaise,
-      thresholdPaise: s.roundingThresholdPaise,
+      stepPaise: shop.roundingStepPaise,
+      smallStepPaise: shop.roundingSmallStepPaise,
+      thresholdPaise: shop.roundingThresholdPaise,
     },
   };
+});
+
+/** Active metal types, in the order the shop arranged them. */
+export const getMetalTypes = cache(async () => {
+  const shop = await getShop();
+  return db.metalType.findMany({
+    where: { shopId: shop.id, isActive: true },
+    orderBy: { sortOrder: 'asc' },
+  });
 });
 ```
 
@@ -1419,47 +1586,53 @@ export const getPricingConfig = cache(async (): Promise<{
 
 import { cache } from 'react';
 import { db } from './db';
-import { getSettings } from './settings';
+import { getShop } from './shop';
 import { rateStatus } from './rates';
 import type { RateSet } from './pricing/types';
 
 export const getLatestRate = cache(async () => {
-  const row = await db.rate.findFirst({ orderBy: { createdAt: 'desc' } });
-  if (!row) return null;
+  const shop = await getShop();
 
-  const rates: RateSet = {
-    GOLD_24K: row.gold24kPaise,
-    GOLD_22K: row.gold22kPaise,
-    GOLD_18K: row.gold18kPaise,
-    SILVER_999: row.silver999Paise,
-  };
+  const rate = await db.rate.findFirst({
+    where: { shopId: shop.id },
+    orderBy: { createdAt: 'desc' },
+    include: { lines: { include: { metalType: { select: { key: true } } } } },
+  });
+  if (!rate) return null;
 
-  return { rates, enteredAt: row.createdAt, enteredBy: row.enteredBy };
+  // A plain object keyed by metal-type key — exactly what the engine expects,
+  // with no knowledge of which purities this particular shop deals in.
+  const rates: Record<string, number> = Object.create(null);
+  for (const line of rate.lines) {
+    rates[line.metalType.key] = line.pricePerGramPaise;
+  }
+
+  return { rates: rates as RateSet, enteredAt: rate.createdAt, enteredBy: rate.enteredBy };
 });
 
 export const getRateSnapshot = cache(async () => {
   const latest = await getLatestRate();
   if (!latest) return null;
 
-  const settings = await getSettings();
+  const shop = await getShop();
   return {
     rates: latest.rates,
     enteredAt: latest.enteredAt,
-    status: rateStatus(latest.enteredAt, new Date(), settings.rateWarnHours, settings.rateStaleHours),
+    status: rateStatus(latest.enteredAt, new Date(), shop.rateWarnHours, shop.rateStaleHours),
   };
 });
 ```
 
-- [ ] **Step 3: Verify the pure tests still pass and types are clean**
+- [ ] **Step 3: Verify the pure tests are untouched**
 
 Run: `npm test && npm run typecheck`
-Expected: all previous tests still PASS, no type errors.
+Expected: every unit test still PASSES — the pure modules gained no server imports — and no type errors.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add src/lib/settings.ts src/lib/rates.ts
-git commit -m "feat: settings module and database-backed rate readers"
+git add src/lib/shop.ts src/lib/rates.server.ts
+git commit -m "feat: shop context helper and database-backed rate reader"
 ```
 
 ---
@@ -1470,28 +1643,30 @@ git commit -m "feat: settings module and database-backed rate readers"
 - Create: `prisma/seed.ts`
 
 **Interfaces:**
-- Consumes: `db.ts`, `money.ts`
-- Produces: a seeded database — settings from `docs/PROJECT.md`, an admin user, a category tree, attribute groups, one opening rate, and three sample products covering gold, silver and diamond
+- Consumes: `@prisma/client`, `bcryptjs`
+- Produces: a seeded database — one shop, its metal types, an admin user, a category tree, attribute groups, one opening rate with a line per metal type, and three sample products
 
 - [ ] **Step 1: Implement `prisma/seed.ts`**
 
 ```ts
-import { PrismaClient, MetalType, Purity, ProductStatus } from '@prisma/client';
+import { PrismaClient, ProductStatus } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const db = new PrismaClient();
 const rs = (rupees: number) => Math.round(rupees * 100);
 
+const SHOP_SLUG = 'poddar-jewellers';
+
 async function main() {
-  // ── Settings ────────────────────────────────────────────────────────────
+  // ── The shop ────────────────────────────────────────────────────────────
   // Seed values only. Every one of these is editable from the admin panel;
   // nothing here may ever be read from source. See Hard Rule 7 in CLAUDE.md.
-  await db.settings.upsert({
-    where: { id: 1 },
+  const shop = await db.shop.upsert({
+    where: { slug: SHOP_SLUG },
     update: {},
     create: {
-      id: 1,
-      shopName: 'Poddar Jewellers',
+      slug: SHOP_SLUG,
+      name: 'Poddar Jewellers',
       tagline: 'Palojori, Deoghar',
       phone: '7250580175',
       whatsapp: '917250580175',
@@ -1501,20 +1676,33 @@ async function main() {
       state: 'Jharkhand',
       pincode: '814146',
       hoursText: 'Online 24x7',
-      defaultMakingPercentBp: 1500,
-      gstPercentBp: 300,
-      roundingStepPaise: 10000,
-      roundingSmallStepPaise: 1000,
-      roundingThresholdPaise: 1000000,
       priceDisclaimer: 'Aaj ke rate par anumaanit, sab tax shaamil. Final price dukaan par tay hoga.',
-      rateWarnHours: 24,
-      rateStaleHours: 48,
       rateBannerText: 'Rate 2 din se update nahi hua — confirm karne ke liye call kariye.',
       heroHeading: 'Ghar baithe humari dukaan dekhiye',
       heroSubheading: 'Har design, har weight, aaj ke rate par.',
       seoLocations: 'Palojori,Deoghar,Jharkhand,Asansol',
     },
   });
+
+  // ── Metal types ─────────────────────────────────────────────────────────
+  // What THIS shop deals in. Another shop would seed a different set, and any
+  // shop can add to it from the admin panel.
+  const metalSeed = [
+    { key: 'GOLD_24K', label: 'Gold 24K', rupeesPerGram: 13530 },
+    { key: 'GOLD_22K', label: 'Gold 22K', rupeesPerGram: 12400 },
+    { key: 'GOLD_18K', label: 'Gold 18K', rupeesPerGram: 10150 },
+    { key: 'SILVER_999', label: 'Silver 999', rupeesPerGram: 216 },
+  ];
+
+  const metals: Record<string, string> = {};
+  for (const [i, m] of metalSeed.entries()) {
+    const row = await db.metalType.upsert({
+      where: { shopId_key: { shopId: shop.id, key: m.key } },
+      update: {},
+      create: { shopId: shop.id, key: m.key, label: m.label, sortOrder: i },
+    });
+    metals[m.key] = row.id;
+  }
 
   // ── Admin user ──────────────────────────────────────────────────────────
   const username = process.env.SEED_ADMIN_USERNAME ?? 'rajat';
@@ -1524,107 +1712,141 @@ async function main() {
   await db.adminUser.upsert({
     where: { username },
     update: {},
-    create: { username, name: 'Rajat Poddar', passwordHash: await bcrypt.hash(password, 10) },
+    create: {
+      shopId: shop.id,
+      username,
+      name: 'Rajat Poddar',
+      passwordHash: await bcrypt.hash(password, 10),
+    },
   });
 
   // ── Categories ──────────────────────────────────────────────────────────
-  const categorySeed: Array<{ slug: string; name: string; children?: Array<{ slug: string; name: string }> }> = [
+  const categorySeed = [
     { slug: 'necklaces', name: 'Necklaces', children: [{ slug: 'chokers', name: 'Chokers' }, { slug: 'chains', name: 'Chains' }] },
-    { slug: 'rings', name: 'Rings' },
-    { slug: 'earrings', name: 'Earrings' },
-    { slug: 'bangles', name: 'Bangles' },
-    { slug: 'payal', name: 'Payal' },
-    { slug: 'mangalsutra', name: 'Mangalsutra' },
+    { slug: 'rings', name: 'Rings', children: [] },
+    { slug: 'earrings', name: 'Earrings', children: [] },
+    { slug: 'bangles', name: 'Bangles', children: [] },
+    { slug: 'payal', name: 'Payal', children: [] },
+    { slug: 'mangalsutra', name: 'Mangalsutra', children: [] },
   ];
 
   for (const [i, c] of categorySeed.entries()) {
     const parent = await db.category.upsert({
-      where: { slug: c.slug },
+      where: { shopId_slug: { shopId: shop.id, slug: c.slug } },
       update: {},
-      create: { slug: c.slug, name: c.name, sortOrder: i },
+      create: { shopId: shop.id, slug: c.slug, name: c.name, sortOrder: i },
     });
-    for (const [j, child] of (c.children ?? []).entries()) {
+    for (const [j, child] of c.children.entries()) {
       await db.category.upsert({
-        where: { slug: child.slug },
+        where: { shopId_slug: { shopId: shop.id, slug: child.slug } },
         update: {},
-        create: { slug: child.slug, name: child.name, parentId: parent.id, sortOrder: j },
+        create: { shopId: shop.id, slug: child.slug, name: child.name, parentId: parent.id, sortOrder: j },
       });
     }
   }
 
   // ── Attribute groups ────────────────────────────────────────────────────
+  // "Metal" is an attribute rather than a column: it is a browsing facet, and a
+  // shop that sells platinum should be able to add that value itself.
   const groups = [
+    { key: 'METAL', name: 'Metal', values: ['gold', 'silver', 'diamond'] },
     { key: 'OCCASION', name: 'Occasion', values: ['wedding', 'daily-wear', 'gifting', 'festive'] },
     { key: 'GENDER', name: 'For', values: ['women', 'men', 'kids', 'teens'] },
     { key: 'STYLE', name: 'Style', values: ['traditional', 'modern', 'minimal'] },
   ];
 
+  const attributes: Record<string, string> = {};
   for (const [i, g] of groups.entries()) {
     const group = await db.attributeGroup.upsert({
-      where: { key: g.key },
+      where: { shopId_key: { shopId: shop.id, key: g.key } },
       update: {},
-      create: { key: g.key, name: g.name, sortOrder: i },
+      create: { shopId: shop.id, key: g.key, name: g.name, sortOrder: i },
     });
     for (const [j, slug] of g.values.entries()) {
       const name = slug.split('-').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');
-      await db.attribute.upsert({
+      const row = await db.attribute.upsert({
         where: { groupId_slug: { groupId: group.id, slug } },
         update: {},
         create: { groupId: group.id, slug, name, sortOrder: j },
       });
+      attributes[`${g.key}:${slug}`] = row.id;
     }
   }
 
   // ── Opening rate ────────────────────────────────────────────────────────
-  if ((await db.rate.count()) === 0) {
+  if ((await db.rate.count({ where: { shopId: shop.id } })) === 0) {
     await db.rate.create({
       data: {
-        gold24kPaise: rs(13530),
-        gold22kPaise: rs(12400),
-        gold18kPaise: rs(10150),
-        silver999Paise: rs(216),
+        shopId: shop.id,
         enteredBy: 'seed',
+        lines: {
+          create: metalSeed.map((m) => ({
+            metalTypeId: metals[m.key],
+            pricePerGramPaise: rs(m.rupeesPerGram),
+          })),
+        },
       },
     });
   }
 
   // ── Sample products ─────────────────────────────────────────────────────
-  const payal = await db.category.findUniqueOrThrow({ where: { slug: 'payal' } });
-  const rings = await db.category.findUniqueOrThrow({ where: { slug: 'rings' } });
+  const categoryId = async (slug: string) =>
+    (await db.category.findUniqueOrThrow({ where: { shopId_slug: { shopId: shop.id, slug } } })).id;
 
   const samples = [
     {
       slug: 'traditional-payal', name: 'Traditional Payal',
-      metalType: MetalType.GOLD, purity: Purity.GOLD_22K,
-      categoryId: payal.id, stoneValuePaise: 0, stoneDescription: null,
+      metalKey: 'GOLD_22K', category: 'payal',
+      stoneValuePaise: 0, stoneDescription: null,
       weightsMg: [20000, 23000, 25000],
+      attributeKeys: ['METAL:gold', 'OCCASION:wedding', 'GENDER:women'],
     },
     {
       slug: 'silver-payal-classic', name: 'Classic Silver Payal',
-      metalType: MetalType.SILVER, purity: Purity.SILVER_999,
-      categoryId: payal.id, stoneValuePaise: 0, stoneDescription: null,
+      metalKey: 'SILVER_999', category: 'payal',
+      stoneValuePaise: 0, stoneDescription: null,
       weightsMg: [30000, 40000, 50000],
+      attributeKeys: ['METAL:silver', 'OCCASION:daily-wear', 'GENDER:women'],
     },
     {
       slug: 'solitaire-ring', name: 'Solitaire Ring',
-      metalType: MetalType.DIAMOND, purity: Purity.GOLD_18K,
-      categoryId: rings.id, stoneValuePaise: rs(45000), stoneDescription: '0.50ct',
+      metalKey: 'GOLD_18K', category: 'rings',
+      stoneValuePaise: rs(45000), stoneDescription: '0.50ct',
       weightsMg: [3500, 4200, 5000],
+      attributeKeys: ['METAL:diamond', 'OCCASION:gifting', 'GENDER:women'],
     },
   ];
 
   for (const s of samples) {
-    const { weightsMg, ...data } = s;
     const product = await db.product.upsert({
-      where: { slug: s.slug },
+      where: { shopId_slug: { shopId: shop.id, slug: s.slug } },
       update: {},
-      create: { ...data, status: ProductStatus.LIVE, featured: true },
+      create: {
+        shopId: shop.id,
+        slug: s.slug,
+        name: s.name,
+        metalTypeId: metals[s.metalKey],
+        categoryId: await categoryId(s.category),
+        stoneValuePaise: s.stoneValuePaise,
+        stoneDescription: s.stoneDescription,
+        status: ProductStatus.LIVE,
+        featured: true,
+      },
     });
-    for (const [i, weightMg] of weightsMg.entries()) {
+
+    for (const [i, weightMg] of s.weightsMg.entries()) {
       await db.productWeight.upsert({
         where: { productId_weightMg: { productId: product.id, weightMg } },
         update: {},
         create: { productId: product.id, weightMg, sortOrder: i },
+      });
+    }
+
+    for (const key of s.attributeKeys) {
+      await db.productAttribute.upsert({
+        where: { productId_attributeId: { productId: product.id, attributeId: attributes[key] } },
+        update: {},
+        create: { productId: product.id, attributeId: attributes[key] },
       });
     }
   }
@@ -1647,18 +1869,17 @@ Expected: `Seeded.`
 
 - [ ] **Step 3: Verify it is idempotent**
 
-Run: `npm run db:seed && npx prisma studio` — or, without the GUI:
 ```bash
 npm run db:seed
-npx tsx -e "import {PrismaClient} from '@prisma/client';const d=new PrismaClient();d.product.count().then(n=>{console.log('products',n);return d.\$disconnect()})"
+npx tsx -e "import {PrismaClient} from '@prisma/client';const d=new PrismaClient();Promise.all([d.shop.count(),d.product.count(),d.metalType.count(),d.rateLine.count()]).then(([s,p,m,l])=>{console.log({shops:s,products:p,metalTypes:m,rateLines:l});return d.\$disconnect()})"
 ```
-Expected: `products 3` after running the seed twice — not 6.
+Expected after running the seed twice: `{ shops: 1, products: 3, metalTypes: 4, rateLines: 4 }` — not doubled.
 
 - [ ] **Step 4: Commit**
 
 ```bash
 git add prisma/seed.ts
-git commit -m "feat: seed settings, admin user, taxonomy and sample products"
+git commit -m "feat: seed one shop with its metal types, taxonomy and samples"
 ```
 
 ---
@@ -1672,11 +1893,12 @@ git commit -m "feat: seed settings, admin user, taxonomy and sample products"
 **Interfaces:**
 - Consumes: `db.ts`
 - Produces:
+  - `SESSION_COOKIE = 'pj_session'`
   - `signSession(payload: SessionPayload): Promise<string>`
   - `verifySession(token: string): Promise<SessionPayload | null>`
-  - `SESSION_COOKIE = 'pj_session'`
   - `getCurrentAdmin(): Promise<SessionPayload | null>`
-  - server action `login(formData: FormData)`, `logout()`
+  - `sessionCookieOptions`
+  - server actions `login(prev, formData)` and `logout()`
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1889,7 +2111,7 @@ export default function LoginPage() {
 - [ ] **Step 7: Verify login works end to end**
 
 Run: `npm run dev`, open `http://localhost:3000/admin`
-Expected: redirected to `/admin/login`; the seeded credentials sign you in and land on `/admin`; a wrong password shows the error without redirecting.
+Expected: redirected to `/admin/login`; the seeded credentials sign you in; a wrong password shows the error without redirecting.
 
 - [ ] **Step 8: Commit**
 
@@ -1906,7 +2128,7 @@ git commit -m "feat: admin session auth with signed cookie and login page"
 - Create: `src/app/admin/layout.tsx`, `src/components/admin/Nav.tsx`
 
 **Interfaces:**
-- Consumes: `auth/session.ts` (`getCurrentAdmin`), `login/actions.ts` (`logout`), `lib/settings.ts`
+- Consumes: `auth/session.ts` (`getCurrentAdmin`), `app/admin/login/actions.ts` (`logout`), `lib/shop.ts` (`getShop`)
 - Produces: the admin chrome every admin page renders inside
 
 - [ ] **Step 1: Implement `src/components/admin/Nav.tsx`**
@@ -1916,10 +2138,11 @@ import Link from 'next/link';
 import { logout } from '@/app/admin/login/actions';
 
 const LINKS = [
-  { href: '/admin', label: 'Aaj ka Rate', sub: "Today's Rate" },
-  { href: '/admin/products', label: 'Products', sub: 'Saman' },
-  { href: '/admin/categories', label: 'Categories', sub: 'Shreni' },
-  { href: '/admin/settings', label: 'Settings', sub: 'Dukaan ki jankari' },
+  { href: '/admin', label: 'Aaj ka Rate' },
+  { href: '/admin/products', label: 'Products' },
+  { href: '/admin/categories', label: 'Categories' },
+  { href: '/admin/metals', label: 'Metal types' },
+  { href: '/admin/settings', label: 'Settings' },
 ];
 
 export function Nav({ shopName, adminName }: { shopName: string; adminName: string }) {
@@ -1949,19 +2172,20 @@ export function Nav({ shopName, adminName }: { shopName: string; adminName: stri
 ```tsx
 import type { ReactNode } from 'react';
 import { getCurrentAdmin } from '@/auth/session';
-import { getSettings } from '@/lib/settings';
+import { getShop } from '@/lib/shop';
 import { Nav } from '@/components/admin/Nav';
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const admin = await getCurrentAdmin();
-  const settings = await getSettings();
 
-  // The login page renders outside this shell via its own route segment guard.
+  // The login page lives under /admin but renders outside this chrome.
   if (!admin) return <>{children}</>;
+
+  const shop = await getShop();
 
   return (
     <div className="min-h-screen bg-stone-50">
-      <Nav shopName={settings.shopName} adminName={admin.name} />
+      <Nav shopName={shop.name} adminName={admin.name} />
       <main className="max-w-5xl mx-auto px-5 py-8">{children}</main>
     </div>
   );
@@ -1982,14 +2206,14 @@ git commit -m "feat: admin shell and navigation"
 
 ---
 
-### Task 12: Price cache recomputation on rate save
+### Task 12: Price cache recomputation
 
 **Files:**
 - Create: `src/lib/price-cache.server.ts`
 
 **Interfaces:**
-- Consumes: `db.ts`, `settings.ts`, `rates.server.ts`, `price-cache.ts`
-- Produces: `recomputeAllPriceCaches(): Promise<number>` — returns how many products were updated
+- Consumes: `db.ts`, `shop.ts`, `rates.server.ts`, `price-cache.ts`, `pricing/making.ts`
+- Produces: `recomputeAllPriceCaches(): Promise<number>` — how many products were updated
 
 - [ ] **Step 1: Implement `src/lib/price-cache.server.ts`**
 
@@ -1998,14 +2222,15 @@ git commit -m "feat: admin shell and navigation"
 // kept separate for the same reason as rates.server.ts.
 
 import { db } from './db';
-import { getPricingConfig } from './settings';
+import { getShop, getPricingConfig } from './shop';
 import { getLatestRate } from './rates.server';
 import { resolveMakingPercent } from './pricing/making';
 import { priceRange } from './price-cache';
 
-/** Nearest-ancestor-first chain of categories above (and including) a product's own. */
-async function categoryChains(): Promise<Map<string, Array<{ name: string; makingPercentBp: number | null }>>> {
+/** Nearest-ancestor-first chain above and including each category. */
+async function categoryChains(shopId: string) {
   const categories = await db.category.findMany({
+    where: { shopId },
     select: { id: true, name: true, parentId: true, makingPercentBp: true },
   });
   const byId = new Map(categories.map((c) => [c.id, c]));
@@ -2013,7 +2238,7 @@ async function categoryChains(): Promise<Map<string, Array<{ name: string; makin
   const chains = new Map<string, Array<{ name: string; makingPercentBp: number | null }>>();
   for (const category of categories) {
     const chain: Array<{ name: string; makingPercentBp: number | null }> = [];
-    let cursor: typeof category | undefined = category;
+    let cursor: (typeof categories)[number] | undefined = category;
     const seen = new Set<string>();
     while (cursor && !seen.has(cursor.id)) {
       seen.add(cursor.id);
@@ -2028,21 +2253,31 @@ async function categoryChains(): Promise<Map<string, Array<{ name: string; makin
 /**
  * Re-price every product against the newest rate.
  *
- * Called on every rate save. At catalog sizes this shop will reach, it is a
- * single pass over a few hundred rows — fast enough to run inline, with no
- * queue and no background worker to operate.
+ * Called whenever a rate is saved, and whenever anything else that feeds the
+ * engine changes — a category's making override, the shop's default making
+ * charge, GST, or the rounding steps.
+ *
+ * At the catalog sizes this shop will reach it is a single pass over a few
+ * hundred rows: fast enough to run inline, with no queue and no background
+ * worker to operate.
  */
 export async function recomputeAllPriceCaches(): Promise<number> {
   const latest = await getLatestRate();
   if (!latest) return 0;
 
+  const shop = await getShop();
   const { gstPercentBp, defaultMakingPercentBp, rounding } = await getPricingConfig();
-  const chains = await categoryChains();
+  const chains = await categoryChains(shop.id);
 
   const products = await db.product.findMany({
+    where: { shopId: shop.id },
     select: {
-      id: true, purity: true, makingPercentBp: true, stoneValuePaise: true,
-      categoryId: true, weights: { select: { weightMg: true } },
+      id: true,
+      makingPercentBp: true,
+      stoneValuePaise: true,
+      categoryId: true,
+      metalType: { select: { key: true } },
+      weights: { select: { weightMg: true } },
     },
   });
 
@@ -2051,9 +2286,16 @@ export async function recomputeAllPriceCaches(): Promise<number> {
 
   for (const product of products) {
     const weightsMg = product.weights.map((w) => w.weightMg);
-    if (weightsMg.length === 0) {
-      // A product with no weight options cannot be priced. Clear any stale
-      // cache rather than leaving a number that no longer means anything.
+    const metalKey = product.metalType.key;
+
+    // A product with no weights cannot be priced, and neither can one whose
+    // metal type has no line in today's rate — the shop may have added the
+    // metal type after entering this morning's rate. Clear the cache rather
+    // than leave a number that no longer means anything.
+    const priceable =
+      weightsMg.length > 0 && Object.prototype.hasOwnProperty.call(latest.rates, metalKey);
+
+    if (!priceable) {
       await db.product.update({
         where: { id: product.id },
         data: { cachedPriceMinPaise: null, cachedPriceMaxPaise: null, cachedAt: now },
@@ -2069,7 +2311,7 @@ export async function recomputeAllPriceCaches(): Promise<number> {
 
     const { minPaise, maxPaise } = priceRange(
       weightsMg,
-      { purity: product.purity, makingPercentBp: percentBp, stoneValuePaise: product.stoneValuePaise },
+      { metalKey, makingPercentBp: percentBp, stoneValuePaise: product.stoneValuePaise },
       latest.rates,
       gstPercentBp,
       rounding,
@@ -2086,46 +2328,51 @@ export async function recomputeAllPriceCaches(): Promise<number> {
 }
 ```
 
-- [ ] **Step 2: Verify the pure tests still pass**
+- [ ] **Step 2: Verify the pure tests are untouched**
 
 Run: `npm test && npm run typecheck`
-Expected: every unit test still PASSES — the pure modules gained no server imports — and no type errors.
+Expected: every unit test still PASSES, no type errors.
 
 - [ ] **Step 3: Verify the recomputation against the seeded data**
 
-The admin screen that calls this arrives in Task 13, so drive it directly:
+The admin screen that calls this arrives in Task 14, so drive it directly:
 
 ```bash
-npx tsx -e "import('./src/lib/price-cache.server.ts').then(async m=>{console.log('updated',await m.recomputeAllPriceCaches())})"
+npx tsx -e "import('./src/lib/price-cache.server.ts').then(async m=>console.log('updated',await m.recomputeAllPriceCaches()))"
 npx tsx -e "import {PrismaClient} from '@prisma/client';const d=new PrismaClient();d.product.findMany({select:{slug:true,cachedPriceMinPaise:true,cachedPriceMaxPaise:true}}).then(r=>{console.table(r);return d.\$disconnect()})"
 ```
 
 Expected: `updated 3`, and all three seeded products carry a non-null min and max.
-The Traditional Payal (22K, 20/23/25g, 15% making, seeded rate Rs 12,400/g) must
-show `cachedPriceMinPaise` 29380000 and `cachedPriceMaxPaise` 36720000 — the same
+Traditional Payal (22K, 20/23/25g, 15% making, seeded rate Rs 12,400/g) must show
+`cachedPriceMinPaise` 29380000 and `cachedPriceMaxPaise` 36720000 — the same
 figures the engine tests assert in Task 4.
+
+If the first script fails because `react`'s `cache()` wants a request scope, do
+not work around it — skip this step, finish Task 14, and verify there instead by
+saving a rate in the admin UI and running only the second script. The figures to
+check are the same.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add src/lib/price-cache.ts
-git commit -m "feat: recompute every product price cache on rate save"
+git add src/lib/price-cache.server.ts
+git commit -m "feat: recompute every product price cache against the latest rate"
 ```
 
 ---
 
-### Task 13: The daily rate screen
+### Task 13: Metal type management
 
-The one screen the shop uses every morning. It must stay a thirty-second job.
+The screen that makes this sellable. A shop adds Silver 925 here, and tomorrow's rate screen has a box for it.
 
 **Files:**
-- Create: `src/app/admin/page.tsx`, `src/app/admin/actions.ts`, `src/components/admin/RateForm.tsx`
+- Create: `src/app/admin/metals/page.tsx`, `src/app/admin/metals/actions.ts`
 
 **Interfaces:**
-- Consumes: `lib/rates.ts` (`getLatestRate`, `rateStatus`, `percentChangeBp`), `lib/money.ts`, `lib/settings.ts`, `lib/price-cache.ts`
-- Produces: server action `saveRate(prev, formData)` — writes the new rate, then calls `recomputeAllPriceCaches` from Task 12
+- Consumes: `db.ts`, `shop.ts`, `price-cache.server.ts`
+- Produces: server actions `createMetalType(prev, formData)`, `updateMetalType(id, formData)`, `deactivateMetalType(id)`
 
-- [ ] **Step 1: Implement `src/app/admin/actions.ts`**
+- [ ] **Step 1: Implement `src/app/admin/metals/actions.ts`**
 
 ```ts
 'use server';
@@ -2133,16 +2380,173 @@ The one screen the shop uses every morning. It must stay a thirty-second job.
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { db } from '@/lib/db';
-import { rupeesToPaise } from '@/lib/money';
-import { getCurrentAdmin } from '@/auth/session';
+import { getShop } from '@/lib/shop';
 import { recomputeAllPriceCaches } from '@/lib/price-cache.server';
 
-const rateSchema = z.object({
-  gold24k: z.coerce.number().positive().max(1000000),
-  gold22k: z.coerce.number().positive().max(1000000),
-  gold18k: z.coerce.number().positive().max(1000000),
-  silver999: z.coerce.number().positive().max(1000000),
+const metalSchema = z.object({
+  key: z
+    .string()
+    .trim()
+    .min(1, 'Key zaroori hai')
+    .regex(/^[A-Z][A-Z0-9_]*$/, 'Key sirf BADE akshar, number aur _ me likhiye, jaise SILVER_925'),
+  label: z.string().trim().min(1, 'Label zaroori hai'),
 });
+
+export type MetalState = { error?: string };
+
+export async function createMetalType(_prev: MetalState, formData: FormData): Promise<MetalState> {
+  const parsed = metalSchema.safeParse({ key: formData.get('key'), label: formData.get('label') });
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  const shop = await getShop();
+  const existing = await db.metalType.findUnique({
+    where: { shopId_key: { shopId: shop.id, key: parsed.data.key } },
+  });
+  if (existing) return { error: `"${parsed.data.key}" pehle se maujood hai.` };
+
+  const count = await db.metalType.count({ where: { shopId: shop.id } });
+  await db.metalType.create({
+    data: { shopId: shop.id, key: parsed.data.key, label: parsed.data.label, sortOrder: count },
+  });
+
+  revalidatePath('/admin/metals');
+  revalidatePath('/admin');
+  return {};
+}
+
+/** The key is deliberately not editable: products and rate history point at it. */
+export async function updateMetalType(id: string, formData: FormData) {
+  const label = String(formData.get('label') ?? '').trim();
+  if (!label) throw new Error('Label khaali nahi ho sakta');
+
+  await db.metalType.update({ where: { id }, data: { label } });
+  revalidatePath('/admin/metals');
+  revalidatePath('/admin');
+}
+
+/**
+ * Deactivated, never deleted. Rate history and existing products still reference
+ * it; removing the row would erase what past prices were computed from.
+ */
+export async function deactivateMetalType(id: string) {
+  const inUse = await db.product.count({ where: { metalTypeId: id } });
+  if (inUse > 0) {
+    throw new Error(`${inUse} product is metal type par hain. Pehle unhe badaliye.`);
+  }
+
+  await db.metalType.update({ where: { id }, data: { isActive: false } });
+  await recomputeAllPriceCaches();
+  revalidatePath('/admin/metals');
+  revalidatePath('/admin');
+}
+```
+
+- [ ] **Step 2: Implement `src/app/admin/metals/page.tsx`**
+
+```tsx
+import { db } from '@/lib/db';
+import { getShop } from '@/lib/shop';
+import { createMetalType, updateMetalType, deactivateMetalType } from './actions';
+
+export const dynamic = 'force-dynamic';
+
+export default async function MetalsPage() {
+  const shop = await getShop();
+  const metals = await db.metalType.findMany({
+    where: { shopId: shop.id },
+    orderBy: { sortOrder: 'asc' },
+    include: { _count: { select: { products: true } } },
+  });
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-3xl font-semibold text-stone-900">Metal types</h1>
+        <p className="text-stone-600 mt-1 max-w-2xl">
+          Aapki dukaan kaun-kaun se metal aur purity me kaam karti hai. Yahan naya
+          jodte hi <strong>Aaj ka Rate</strong> screen par uska box apne aap aa jayega.
+        </p>
+      </div>
+
+      <div className="bg-white border border-stone-200 rounded divide-y divide-stone-200">
+        {metals.map((m) => (
+          <div key={m.id} className="p-4 flex flex-wrap items-center gap-3">
+            <code className="text-sm text-stone-500 min-w-36">{m.key}</code>
+            <form action={updateMetalType.bind(null, m.id)} className="flex items-center gap-3 flex-1 min-w-60">
+              <input name="label" defaultValue={m.label}
+                className="border border-stone-300 rounded px-3 py-2 flex-1" />
+              <button type="submit" className="text-sm underline text-stone-700">Save</button>
+            </form>
+            <span className="text-sm text-stone-500 min-w-24">{m._count.products} products</span>
+            {m.isActive ? (
+              <form action={deactivateMetalType.bind(null, m.id)}>
+                <button type="submit" className="text-sm underline text-stone-500">Band karein</button>
+              </form>
+            ) : (
+              <span className="text-xs rounded-full px-2.5 py-1 bg-stone-100 text-stone-600">band</span>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <form action={async (fd: FormData) => { 'use server'; await createMetalType({}, fd); }}
+        className="bg-white border border-stone-200 rounded p-5 flex flex-wrap items-end gap-3">
+        <label className="space-y-1.5">
+          <span className="block text-sm text-stone-600">Key</span>
+          <input name="key" required placeholder="SILVER_925"
+            className="border border-stone-300 rounded px-3 py-2 font-mono" />
+          <span className="block text-xs text-stone-500">Baad me badla nahi ja sakta</span>
+        </label>
+        <label className="space-y-1.5">
+          <span className="block text-sm text-stone-600">Label</span>
+          <input name="label" required placeholder="Silver 925"
+            className="border border-stone-300 rounded px-3 py-2" />
+        </label>
+        <button type="submit" className="bg-stone-900 text-white rounded px-6 py-2.5">Add</button>
+      </form>
+    </div>
+  );
+}
+```
+
+- [ ] **Step 3: Verify**
+
+Run `npm run dev`, open `/admin/metals`. Add `SILVER_925` / `Silver 925`, then open
+`/admin` and confirm a fifth rate input has appeared with no code change.
+(The rate screen arrives in Task 14; if running these in order, verify this step
+after Task 14 and note it here.)
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src/app/admin/metals/
+git commit -m "feat: metal type management — a shop defines its own purities"
+```
+
+---
+
+### Task 14: The daily rate screen
+
+The one screen the shop uses every morning. It must stay a thirty-second job, and it builds itself from the shop's metal types.
+
+**Files:**
+- Create: `src/app/admin/page.tsx`, `src/app/admin/actions.ts`, `src/components/admin/RateForm.tsx`
+
+**Interfaces:**
+- Consumes: `shop.ts` (`getShop`, `getMetalTypes`), `rates.server.ts` (`getLatestRate`), `rates.ts` (`rateStatus`), `money.ts`, `price-cache.server.ts`
+- Produces: server action `saveRate(prev, formData)`; form fields are named `rate_<metalTypeId>`
+
+- [ ] **Step 1: Implement `src/app/admin/actions.ts`**
+
+```ts
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import { db } from '@/lib/db';
+import { rupeesToPaise } from '@/lib/money';
+import { getShop, getMetalTypes } from '@/lib/shop';
+import { getCurrentAdmin } from '@/auth/session';
+import { recomputeAllPriceCaches } from '@/lib/price-cache.server';
 
 export type SaveRateState = { error?: string; savedAt?: string };
 
@@ -2150,30 +2554,31 @@ export async function saveRate(_prev: SaveRateState, formData: FormData): Promis
   const admin = await getCurrentAdmin();
   if (!admin) return { error: 'Session khatam ho gaya. Dobara login kariye.' };
 
-  const parsed = rateSchema.safeParse({
-    gold24k: formData.get('gold24k'),
-    gold22k: formData.get('gold22k'),
-    gold18k: formData.get('gold18k'),
-    silver999: formData.get('silver999'),
-  });
+  const shop = await getShop();
+  const metals = await getMetalTypes();
+  if (metals.length === 0) {
+    return { error: 'Pehle Metal types me kam se kam ek metal jodiye.' };
+  }
 
-  if (!parsed.success) {
-    return { error: 'Saare rate sahi number me bhariye.' };
+  // One field per metal type, so adding a metal type needs no change here.
+  const lines: Array<{ metalTypeId: string; pricePerGramPaise: number }> = [];
+  for (const metal of metals) {
+    const raw = String(formData.get(`rate_${metal.id}`) ?? '').trim();
+    const rupees = Number(raw);
+
+    if (raw === '' || !Number.isFinite(rupees) || rupees <= 0 || rupees > 1_000_000) {
+      return { error: `${metal.label} ka rate sahi number me bhariye.` };
+    }
+    lines.push({ metalTypeId: metal.id, pricePerGramPaise: rupeesToPaise(rupees) });
   }
 
   await db.rate.create({
-    data: {
-      gold24kPaise: rupeesToPaise(parsed.data.gold24k),
-      gold22kPaise: rupeesToPaise(parsed.data.gold22k),
-      gold18kPaise: rupeesToPaise(parsed.data.gold18k),
-      silver999Paise: rupeesToPaise(parsed.data.silver999),
-      enteredBy: admin.name,
-    },
+    data: { shopId: shop.id, enteredBy: admin.name, lines: { create: lines } },
   });
 
   await recomputeAllPriceCaches();
-
   revalidatePath('/', 'layout');
+
   return { savedAt: new Date().toISOString() };
 }
 ```
@@ -2186,26 +2591,28 @@ export async function saveRate(_prev: SaveRateState, formData: FormData): Promis
 import { useActionState, useState } from 'react';
 import { saveRate, type SaveRateState } from '@/app/admin/actions';
 
-export interface RateFieldSeed {
-  name: 'gold24k' | 'gold22k' | 'gold18k' | 'silver999';
+export interface RateField {
+  metalTypeId: string;
   label: string;
-  sub: string;
+  /** Rupees per gram at the last save. 0 when this metal has no rate yet. */
   previousRupees: number;
 }
 
 /** A single rate moving more than this much needs a second confirmation. */
 const BIG_CHANGE_PERCENT = 10;
 
-export function RateForm({ fields }: { fields: RateFieldSeed[] }) {
+export function RateForm({ fields }: { fields: RateField[] }) {
   const [state, action, pending] = useActionState<SaveRateState, FormData>(saveRate, {});
   const [values, setValues] = useState<Record<string, string>>(
-    Object.fromEntries(fields.map((f) => [f.name, String(f.previousRupees)])),
+    Object.fromEntries(fields.map((f) => [f.metalTypeId, f.previousRupees ? String(f.previousRupees) : ''])),
   );
 
   const changes = fields.map((f) => {
-    const next = Number(values[f.name]);
-    const prev = f.previousRupees;
-    const pct = prev > 0 && Number.isFinite(next) ? ((next - prev) / prev) * 100 : 0;
+    const next = Number(values[f.metalTypeId]);
+    const pct =
+      f.previousRupees > 0 && Number.isFinite(next) && next > 0
+        ? ((next - f.previousRupees) / f.previousRupees) * 100
+        : 0;
     return { ...f, next, pct };
   });
 
@@ -2213,7 +2620,9 @@ export function RateForm({ fields }: { fields: RateFieldSeed[] }) {
 
   function confirmBeforeSubmit(event: React.FormEvent<HTMLFormElement>) {
     if (big.length === 0) return;
-    const lines = big.map((c) => `${c.label}: ₹${c.previousRupees} → ₹${c.next} (${c.pct > 0 ? '+' : ''}${c.pct.toFixed(1)}%)`);
+    const lines = big.map(
+      (c) => `${c.label}: ₹${c.previousRupees.toLocaleString('en-IN')} → ₹${c.next.toLocaleString('en-IN')} (${c.pct > 0 ? '+' : ''}${c.pct.toFixed(1)}%)`,
+    );
     // A confirm() dialog is deliberate here: it is the last stop before a typo
     // reaches every price on the website.
     if (!window.confirm(`Ye bada badlaav hai:\n\n${lines.join('\n')}\n\nSahi hai?`)) {
@@ -2225,24 +2634,24 @@ export function RateForm({ fields }: { fields: RateFieldSeed[] }) {
     <form action={action} onSubmit={confirmBeforeSubmit} className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2">
         {changes.map((f) => (
-          <label key={f.name} className="block bg-white border border-stone-200 rounded p-5 space-y-2">
+          <label key={f.metalTypeId} className="block bg-white border border-stone-200 rounded p-5 space-y-2">
             <span className="block text-base font-medium text-stone-900">{f.label}</span>
-            <span className="block text-xs text-stone-500">{f.sub}</span>
             <div className="flex items-center gap-2">
               <span className="text-lg text-stone-400">₹</span>
               <input
-                name={f.name}
+                name={`rate_${f.metalTypeId}`}
                 inputMode="decimal"
                 required
-                value={values[f.name]}
-                onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.value }))}
+                value={values[f.metalTypeId]}
+                onChange={(e) => setValues((v) => ({ ...v, [f.metalTypeId]: e.target.value }))}
                 className="w-full border border-stone-300 rounded px-3 py-3 text-xl tabular-nums"
               />
               <span className="text-sm text-stone-500 whitespace-nowrap">/ gram</span>
             </div>
             <span className={`block text-sm ${Math.abs(f.pct) >= BIG_CHANGE_PERCENT ? 'text-amber-700 font-medium' : 'text-stone-500'}`}>
-              Kal: ₹{f.previousRupees.toLocaleString('en-IN')}
-              {f.pct !== 0 && ` · ${f.pct > 0 ? '+' : ''}${f.pct.toFixed(1)}%`}
+              {f.previousRupees > 0
+                ? `Kal: ₹${f.previousRupees.toLocaleString('en-IN')}${f.pct !== 0 ? ` · ${f.pct > 0 ? '+' : ''}${f.pct.toFixed(1)}%` : ''}`
+                : 'Pehli baar'}
             </span>
           </label>
         ))}
@@ -2263,33 +2672,34 @@ export function RateForm({ fields }: { fields: RateFieldSeed[] }) {
 - [ ] **Step 3: Implement `src/app/admin/page.tsx`**
 
 ```tsx
-import { rateStatus } from '@/lib/rates';
+import Link from 'next/link';
+import { getShop, getMetalTypes } from '@/lib/shop';
 import { getLatestRate } from '@/lib/rates.server';
-import { getSettings } from '@/lib/settings';
-import { RateForm, type RateFieldSeed } from '@/components/admin/RateForm';
+import { rateStatus } from '@/lib/rates';
+import { RateForm, type RateField } from '@/components/admin/RateForm';
 
 export const dynamic = 'force-dynamic';
 
 export default async function DailyRatePage() {
-  const latest = await getLatestRate();
-  const settings = await getSettings();
+  const [shop, metals, latest] = await Promise.all([getShop(), getMetalTypes(), getLatestRate()]);
 
   const status = latest
-    ? rateStatus(latest.enteredAt, new Date(), settings.rateWarnHours, settings.rateStaleHours)
+    ? rateStatus(latest.enteredAt, new Date(), shop.rateWarnHours, shop.rateStaleHours)
     : 'STALE';
 
-  const fields: RateFieldSeed[] = [
-    { name: 'gold24k', label: 'Gold 24K', sub: '24 carat', previousRupees: (latest?.rates.GOLD_24K ?? 0) / 100 },
-    { name: 'gold22k', label: 'Gold 22K', sub: '22 carat', previousRupees: (latest?.rates.GOLD_22K ?? 0) / 100 },
-    { name: 'gold18k', label: 'Gold 18K', sub: '18 carat', previousRupees: (latest?.rates.GOLD_18K ?? 0) / 100 },
-    { name: 'silver999', label: 'Silver 999', sub: 'Fine silver', previousRupees: (latest?.rates.SILVER_999 ?? 0) / 100 },
-  ];
+  const fields: RateField[] = metals.map((m) => ({
+    metalTypeId: m.id,
+    label: m.label,
+    previousRupees: (latest?.rates[m.key] ?? 0) / 100,
+  }));
 
   return (
     <div className="space-y-7">
       <div>
         <h1 className="text-3xl font-semibold text-stone-900">Aaj ka Rate</h1>
-        <p className="text-stone-600 mt-1">Chaar number bhariye aur Save dabaiye. Poori website apne aap update ho jayegi.</p>
+        <p className="text-stone-600 mt-1">
+          Rate bhariye aur Save dabaiye. Poori website apne aap update ho jayegi.
+        </p>
       </div>
 
       {status !== 'FRESH' && (
@@ -2301,7 +2711,17 @@ export default async function DailyRatePage() {
         </div>
       )}
 
-      <RateForm fields={fields} />
+      {metals.length === 0 ? (
+        <div className="border border-stone-300 bg-white rounded p-6">
+          <p className="text-stone-700">
+            Abhi koi metal type nahi hai. Pehle{' '}
+            <Link href="/admin/metals" className="underline">Metal types</Link> me
+            batayiye ki aapki dukaan kis-kis purity me kaam karti hai.
+          </p>
+        </div>
+      ) : (
+        <RateForm fields={fields} />
+      )}
 
       {latest && (
         <p className="text-sm text-stone-500">
@@ -2315,34 +2735,34 @@ export default async function DailyRatePage() {
 
 - [ ] **Step 4: Verify the whole loop**
 
-Run `npm run dev`, sign in, and change the 22K rate. Then confirm the recompute
-from Task 12 actually ran:
+Run `npm run dev`, sign in, and change the 22K rate. Then:
 
 ```bash
 npx tsx -e "import {PrismaClient} from '@prisma/client';const d=new PrismaClient();d.product.findMany({select:{slug:true,cachedPriceMinPaise:true,cachedPriceMaxPaise:true}}).then(r=>{console.table(r);return d.\$disconnect()})"
 ```
 
-Expected: every product has a non-null min and max, and both moved with the rate.
-Then raise the 22K rate by more than 10% and confirm the second confirmation
-appears before the save goes through.
+Expected: every product's cached range moved with the rate. Then:
+- Raise a rate by more than 10% and confirm the second confirmation appears.
+- Add `SILVER_925` under `/admin/metals`, return to `/admin`, and confirm a fifth
+  input is there — the proof that metal types are data and not code.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add src/app/admin/page.tsx src/app/admin/actions.ts src/components/admin/RateForm.tsx
-git commit -m "feat: daily rate screen with change confirmation"
+git commit -m "feat: daily rate screen, built from the shop's own metal types"
 ```
 
 ---
 
-### Task 14: Category management
+### Task 15: Category management
 
 **Files:**
 - Create: `src/app/admin/categories/page.tsx`, `src/app/admin/categories/actions.ts`
 
 **Interfaces:**
-- Consumes: `db.ts`, `settings.ts`, `price-cache.ts`
-- Produces: server actions `createCategory`, `updateCategory`, `deleteCategory`
+- Consumes: `db.ts`, `shop.ts`, `price-cache.server.ts`
+- Produces: server actions `createCategory(prev, formData)`, `updateCategory(id, formData)`, `deleteCategory(id)`
 
 - [ ] **Step 1: Implement `src/app/admin/categories/actions.ts`**
 
@@ -2352,39 +2772,51 @@ git commit -m "feat: daily rate screen with change confirmation"
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { db } from '@/lib/db';
+import { getShop } from '@/lib/shop';
 import { recomputeAllPriceCaches } from '@/lib/price-cache.server';
 
 const slugify = (value: string) =>
   value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
-const categorySchema = z.object({
-  name: z.string().min(1, 'Naam zaroori hai'),
-  parentId: z.string().optional().transform((v) => (v ? v : null)),
-  makingPercent: z.string().optional(),
-});
-
-function toBp(value: string | undefined): number | null {
-  if (value === undefined || value.trim() === '') return null;
-  const n = Number(value);
-  if (!Number.isFinite(n) || n < 0 || n > 100) throw new Error('Making charge 0 se 100 ke beech hona chahiye');
+/** "" means inherit. A real number becomes basis points. */
+function toBp(value: string | null | undefined): number | null {
+  const raw = (value ?? '').trim();
+  if (raw === '') return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0 || n > 100) {
+    throw new Error('Making charge 0 se 100 ke beech hona chahiye');
+  }
   return Math.round(n * 100);
 }
 
-export async function createCategory(_prev: { error?: string }, formData: FormData) {
+const categorySchema = z.object({
+  name: z.string().trim().min(1, 'Naam zaroori hai'),
+  parentId: z.string().optional().transform((v) => (v ? v : null)),
+});
+
+export type CategoryState = { error?: string };
+
+export async function createCategory(_prev: CategoryState, formData: FormData): Promise<CategoryState> {
   const parsed = categorySchema.safeParse({
     name: formData.get('name'),
     parentId: formData.get('parentId'),
-    makingPercent: formData.get('makingPercent'),
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  const shop = await getShop();
+  const slug = slugify(parsed.data.name);
+
+  const clash = await db.category.findUnique({ where: { shopId_slug: { shopId: shop.id, slug } } });
+  if (clash) return { error: `"${parsed.data.name}" pehle se hai.` };
 
   try {
     await db.category.create({
       data: {
+        shopId: shop.id,
         name: parsed.data.name,
-        slug: slugify(parsed.data.name),
+        slug,
         parentId: parsed.data.parentId,
-        makingPercentBp: toBp(parsed.data.makingPercent),
+        makingPercentBp: toBp(formData.get('makingPercent') as string | null),
       },
     });
   } catch (e) {
@@ -2398,23 +2830,32 @@ export async function createCategory(_prev: { error?: string }, formData: FormDa
 }
 
 export async function updateCategory(id: string, formData: FormData) {
-  const makingPercentBp = toBp(String(formData.get('makingPercent') ?? ''));
   await db.category.update({
     where: { id },
-    data: { name: String(formData.get('name')), makingPercentBp },
+    data: {
+      name: String(formData.get('name') ?? '').trim(),
+      makingPercentBp: toBp(formData.get('makingPercent') as string | null),
+    },
   });
+
+  // A category's making override feeds the engine for every product under it.
   await recomputeAllPriceCaches();
   revalidatePath('/admin/categories');
   revalidatePath('/', 'layout');
 }
 
 export async function deleteCategory(id: string) {
-  const productCount = await db.product.count({ where: { categoryId: id } });
-  if (productCount > 0) {
-    throw new Error(`Is category me ${productCount} product hain. Pehle unhe hataiye.`);
-  }
+  const [productCount, childCount] = await Promise.all([
+    db.product.count({ where: { categoryId: id } }),
+    db.category.count({ where: { parentId: id } }),
+  ]);
+
+  if (productCount > 0) throw new Error(`Is category me ${productCount} product hain. Pehle unhe hataiye.`);
+  if (childCount > 0) throw new Error(`Is category ke andar ${childCount} aur category hain.`);
+
   await db.category.delete({ where: { id } });
   revalidatePath('/admin/categories');
+  revalidatePath('/', 'layout');
 }
 ```
 
@@ -2422,21 +2863,20 @@ export async function deleteCategory(id: string) {
 
 ```tsx
 import { db } from '@/lib/db';
-import { getSettings } from '@/lib/settings';
-import { createCategory, updateCategory } from './actions';
+import { getShop } from '@/lib/shop';
+import { createCategory, updateCategory, deleteCategory } from './actions';
 
 export const dynamic = 'force-dynamic';
 
 export default async function CategoriesPage() {
-  const [categories, settings] = await Promise.all([
-    db.category.findMany({
-      orderBy: [{ parentId: 'asc' }, { sortOrder: 'asc' }],
-      include: { parent: { select: { name: true } }, _count: { select: { products: true } } },
-    }),
-    getSettings(),
-  ]);
+  const shop = await getShop();
+  const categories = await db.category.findMany({
+    where: { shopId: shop.id },
+    orderBy: [{ parentId: 'asc' }, { sortOrder: 'asc' }],
+    include: { parent: { select: { name: true } }, _count: { select: { products: true } } },
+  });
 
-  const defaultPercent = settings.defaultMakingPercentBp / 100;
+  const defaultPercent = shop.defaultMakingPercentBp / 100;
 
   return (
     <div className="space-y-8">
@@ -2449,18 +2889,26 @@ export default async function CategoriesPage() {
 
       <div className="bg-white border border-stone-200 rounded divide-y divide-stone-200">
         {categories.map((c) => (
-          <form key={c.id} action={updateCategory.bind(null, c.id)} className="p-4 flex flex-wrap items-center gap-3">
-            <input name="name" defaultValue={c.name} className="border border-stone-300 rounded px-3 py-2 flex-1 min-w-45" />
-            <span className="text-sm text-stone-500 min-w-32">{c.parent ? `under ${c.parent.name}` : 'top level'}</span>
-            <label className="flex items-center gap-2 text-sm">
-              <input name="makingPercent" inputMode="decimal" placeholder={String(defaultPercent)}
-                defaultValue={c.makingPercentBp === null ? '' : String(c.makingPercentBp / 100)}
-                className="w-20 border border-stone-300 rounded px-2 py-2 tabular-nums" />
-              <span className="text-stone-500">% making</span>
-            </label>
-            <span className="text-sm text-stone-500 min-w-20">{c._count.products} products</span>
-            <button type="submit" className="text-sm underline text-stone-700">Save</button>
-          </form>
+          <div key={c.id} className="p-4 flex flex-wrap items-center gap-3">
+            <form action={updateCategory.bind(null, c.id)} className="flex flex-wrap items-center gap-3 flex-1">
+              <input name="name" defaultValue={c.name}
+                className="border border-stone-300 rounded px-3 py-2 flex-1 min-w-45" />
+              <span className="text-sm text-stone-500 min-w-32">
+                {c.parent ? `under ${c.parent.name}` : 'top level'}
+              </span>
+              <label className="flex items-center gap-2 text-sm">
+                <input name="makingPercent" inputMode="decimal" placeholder={String(defaultPercent)}
+                  defaultValue={c.makingPercentBp === null ? '' : String(c.makingPercentBp / 100)}
+                  className="w-20 border border-stone-300 rounded px-2 py-2 tabular-nums" />
+                <span className="text-stone-500">% making</span>
+              </label>
+              <button type="submit" className="text-sm underline text-stone-700">Save</button>
+            </form>
+            <span className="text-sm text-stone-500 min-w-24">{c._count.products} products</span>
+            <form action={deleteCategory.bind(null, c.id)}>
+              <button type="submit" className="text-sm underline text-stone-500">Hataiye</button>
+            </form>
+          </div>
         ))}
       </div>
 
@@ -2493,7 +2941,9 @@ export default async function CategoriesPage() {
 
 - [ ] **Step 3: Verify**
 
-Run `npm run dev`, open `/admin/categories`. Set Payal to 12%, save, then confirm the Payal product's cached price fell relative to a 15% product.
+Run `npm run dev`, open `/admin/categories`. Set Payal to 12%, save, then confirm
+Traditional Payal's cached range fell relative to its 15% value (min was
+29380000; at 12% it must be lower). Set it back to blank afterwards.
 
 - [ ] **Step 4: Commit**
 
@@ -2504,7 +2954,7 @@ git commit -m "feat: category management with making-charge overrides"
 
 ---
 
-### Task 15: Image upload pipeline
+### Task 16: Image upload pipeline
 
 **Files:**
 - Create: `src/lib/images.ts`
@@ -2514,8 +2964,8 @@ git commit -m "feat: category management with making-charge overrides"
 - Consumes: `sharp`, `node:crypto`, `node:fs/promises`
 - Produces:
   - `IMAGE_WIDTHS = [400, 800, 1600] as const`
+  - `variantPath(basePath: string, width: number, format: 'avif' | 'webp'): string`
   - `processUpload(buffer: Buffer, uploadDir: string): Promise<{ basePath: string; width: number; height: number }>`
-  - `variantPath(basePath: string, width: number, format: 'avif'|'webp'): string`
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -2600,7 +3050,8 @@ export type ImageFormat = 'avif' | 'webp';
 
 /**
  * Variant filenames are derived from a content hash, so they can be cached
- * forever at the edge. Re-uploading the same bytes produces the same name.
+ * forever at the edge — which is what keeps the NAS out of the request path.
+ * Re-uploading the same bytes produces the same name.
  */
 export function variantPath(basePath: string, width: number, format: ImageFormat): string {
   return `${basePath}-${width}.${format}`;
@@ -2610,8 +3061,7 @@ export async function processUpload(
   buffer: Buffer,
   uploadDir: string,
 ): Promise<{ basePath: string; width: number; height: number }> {
-  const image = sharp(buffer);
-  const metadata = await image.metadata();
+  const metadata = await sharp(buffer).metadata();
 
   if (!metadata.width || !metadata.height) {
     throw new Error('Ye file image nahi hai, ya kharab hai.');
@@ -2621,8 +3071,8 @@ export async function processUpload(
   await mkdir(uploadDir, { recursive: true });
 
   for (const width of IMAGE_WIDTHS) {
-    // `withoutEnlargement` keeps a small source from being blown up into a
-    // soft, larger file that looks worse than the original.
+    // `withoutEnlargement` keeps a small source from being blown up into a soft,
+    // larger file that looks worse than the original.
     const resized = sharp(buffer).resize({ width, withoutEnlargement: true });
 
     await writeFile(
@@ -2653,85 +3103,18 @@ git commit -m "feat: content-hashed AVIF/WebP image variant pipeline"
 
 ---
 
-### Task 16: Product management
+### Task 17: Product management
 
 The largest admin surface. Creates and edits products, their weight options, images and attributes.
 
 **Files:**
-- Create: `src/lib/weights.ts`, `src/app/admin/products/page.tsx`, `src/app/admin/products/actions.ts`, `src/app/admin/products/new/page.tsx`, `src/app/admin/products/[id]/page.tsx`, `src/components/admin/ProductForm.tsx`
-- Test: `src/lib/weights.test.ts`
+- Create: `src/app/admin/products/page.tsx`, `src/app/admin/products/actions.ts`, `src/app/admin/products/new/page.tsx`, `src/app/admin/products/[id]/page.tsx`, `src/components/admin/ProductForm.tsx`
 
 **Interfaces:**
-- Consumes: `db.ts`, `settings.ts`, `images.ts`, `price-cache.ts`, `pricing/making.ts`, `money.ts`
+- Consumes: `db.ts`, `shop.ts`, `weights.ts` (`parseWeights`), `images.ts`, `price-cache.server.ts`, `pricing/making.ts`, `money.ts`
 - Produces: server actions `saveProduct(id: string | null, prev, formData)` and `deleteProduct(id)`
 
-- [ ] **Step 1: Write the failing tests for weight parsing**
-
-`src/lib/weights.test.ts`:
-```ts
-import { describe, it, expect } from 'vitest';
-import { parseWeights } from './weights';
-
-describe('parseWeights', () => {
-  it('parses a comma-separated list into milligrams', () => {
-    expect(parseWeights('20, 23, 25')).toEqual([20000, 23000, 25000]);
-  });
-
-  it('accepts a g suffix and stray whitespace', () => {
-    expect(parseWeights('20g  23g\n25g')).toEqual([20000, 23000, 25000]);
-  });
-
-  it('handles fractional grams', () => {
-    expect(parseWeights('4.2, 5')).toEqual([4200, 5000]);
-  });
-
-  it('sorts ascending regardless of input order', () => {
-    expect(parseWeights('25, 20, 23')).toEqual([20000, 23000, 25000]);
-  });
-
-  it('removes duplicates', () => {
-    expect(parseWeights('20, 20, 23')).toEqual([20000, 23000]);
-  });
-
-  it('rejects a non-numeric entry', () => {
-    expect(() => parseWeights('20, bees, 25')).toThrow(/weight/i);
-  });
-
-  it('rejects zero, negative and empty input', () => {
-    expect(() => parseWeights('20, 0')).toThrow(/weight/i);
-    expect(() => parseWeights('-5')).toThrow(/weight/i);
-    expect(() => parseWeights('   ')).toThrow(/weight/i);
-  });
-});
-```
-
-- [ ] **Step 2: Implement `src/lib/weights.ts`**
-
-Deliberately not in the server-action file: a `'use server'` module may only
-export async functions, and this parser is worth testing on its own.
-
-```ts
-/** "20, 23, 25" and "20g 23g 25g" both parse to [20000, 23000, 25000]. */
-export function parseWeights(raw: string): number[] {
-  const grams = raw
-    .split(/[,\s]+/)
-    .map((piece) => piece.replace(/g$/i, '').trim())
-    .filter(Boolean)
-    .map(Number);
-
-  if (grams.length === 0 || grams.some((g) => !Number.isFinite(g) || g <= 0)) {
-    throw new Error('Weight sahi number me likhiye, jaise: 20, 23, 25');
-  }
-
-  const mg = grams.map((g) => Math.round(g * 1000));
-  return [...new Set(mg)].sort((a, b) => a - b);
-}
-```
-
-Run: `npm test -- src/lib/weights.test.ts`
-Expected: PASS, 7 tests
-
-- [ ] **Step 3: Implement `src/app/admin/products/actions.ts`**
+- [ ] **Step 1: Implement `src/app/admin/products/actions.ts`**
 
 ```ts
 'use server';
@@ -2742,24 +3125,23 @@ import { z } from 'zod';
 import path from 'node:path';
 import { db } from '@/lib/db';
 import { rupeesToPaise } from '@/lib/money';
-import { processUpload } from '@/lib/images';
 import { parseWeights } from '@/lib/weights';
+import { processUpload } from '@/lib/images';
+import { getShop } from '@/lib/shop';
 import { recomputeAllPriceCaches } from '@/lib/price-cache.server';
 
 const slugify = (value: string) =>
   value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
 const productSchema = z.object({
-  name: z.string().min(1, 'Product ka naam zaroori hai'),
+  name: z.string().trim().min(1, 'Product ka naam zaroori hai'),
   description: z.string().optional(),
   categoryId: z.string().min(1, 'Category chuniye'),
-  metalType: z.enum(['GOLD', 'SILVER', 'DIAMOND']),
-  purity: z.enum(['GOLD_24K', 'GOLD_22K', 'GOLD_18K', 'SILVER_999']),
+  metalTypeId: z.string().min(1, 'Metal type chuniye'),
   status: z.enum(['DRAFT', 'LIVE']),
   featured: z.coerce.boolean(),
   stoneValue: z.coerce.number().min(0).default(0),
   stoneDescription: z.string().optional(),
-  makingPercent: z.string().optional(),
   weights: z.string().min(1, 'Kam se kam ek weight daaliye'),
 });
 
@@ -2770,20 +3152,19 @@ export async function saveProduct(
   _prev: SaveProductState,
   formData: FormData,
 ): Promise<SaveProductState> {
+  const shop = await getShop();
+
   const parsed = productSchema.safeParse({
     name: formData.get('name'),
     description: formData.get('description'),
     categoryId: formData.get('categoryId'),
-    metalType: formData.get('metalType'),
-    purity: formData.get('purity'),
+    metalTypeId: formData.get('metalTypeId'),
     status: formData.get('status'),
     featured: formData.get('featured') === 'on',
     stoneValue: formData.get('stoneValue') || 0,
     stoneDescription: formData.get('stoneDescription'),
-    makingPercent: formData.get('makingPercent'),
     weights: formData.get('weights'),
   });
-
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
   let weightsMg: number[];
@@ -2793,11 +3174,13 @@ export async function saveProduct(
     return { error: e instanceof Error ? e.message : 'Weight galat hai' };
   }
 
-  const makingRaw = parsed.data.makingPercent?.trim();
+  const makingRaw = String(formData.get('makingPercent') ?? '').trim();
   let makingPercentBp: number | null = null;
-  if (makingRaw) {
+  if (makingRaw !== '') {
     const n = Number(makingRaw);
-    if (!Number.isFinite(n) || n < 0 || n > 100) return { error: 'Making charge 0 se 100 ke beech hona chahiye' };
+    if (!Number.isFinite(n) || n < 0 || n > 100) {
+      return { error: 'Making charge 0 se 100 ke beech hona chahiye' };
+    }
     makingPercentBp = Math.round(n * 100);
   }
 
@@ -2805,8 +3188,7 @@ export async function saveProduct(
     name: parsed.data.name,
     description: parsed.data.description || null,
     categoryId: parsed.data.categoryId,
-    metalType: parsed.data.metalType,
-    purity: parsed.data.purity,
+    metalTypeId: parsed.data.metalTypeId,
     status: parsed.data.status,
     featured: parsed.data.featured,
     stoneValuePaise: rupeesToPaise(parsed.data.stoneValue),
@@ -2814,37 +3196,46 @@ export async function saveProduct(
     makingPercentBp,
   };
 
-  const product = id
-    ? await db.product.update({ where: { id }, data })
-    : await db.product.create({ data: { ...data, slug: slugify(parsed.data.name) } });
+  let productId: string;
+  if (id) {
+    const updated = await db.product.update({ where: { id }, data });
+    productId = updated.id;
+  } else {
+    const slug = slugify(parsed.data.name);
+    const clash = await db.product.findUnique({ where: { shopId_slug: { shopId: shop.id, slug } } });
+    if (clash) return { error: `"${parsed.data.name}" naam ka product pehle se hai.` };
+
+    const created = await db.product.create({ data: { ...data, shopId: shop.id, slug } });
+    productId = created.id;
+  }
 
   // Replace the weight set wholesale — simpler and safer than diffing, and the
   // sets are three or four rows.
-  await db.productWeight.deleteMany({ where: { productId: product.id } });
+  await db.productWeight.deleteMany({ where: { productId } });
   await db.productWeight.createMany({
-    data: weightsMg.map((weightMg, sortOrder) => ({ productId: product.id, weightMg, sortOrder })),
+    data: weightsMg.map((weightMg, sortOrder) => ({ productId, weightMg, sortOrder })),
   });
 
   // Attributes
   const attributeIds = formData.getAll('attributeIds').map(String).filter(Boolean);
-  await db.productAttribute.deleteMany({ where: { productId: product.id } });
+  await db.productAttribute.deleteMany({ where: { productId } });
   if (attributeIds.length > 0) {
     await db.productAttribute.createMany({
-      data: attributeIds.map((attributeId) => ({ productId: product.id, attributeId })),
+      data: attributeIds.map((attributeId) => ({ productId, attributeId })),
     });
   }
 
-  // Images
+  // Images — appended, never replaced, so an edit does not drop existing photos.
   const uploadDir = process.env.UPLOAD_DIR ?? path.join(process.cwd(), 'public', 'uploads');
   const files = formData.getAll('images').filter((f): f is File => f instanceof File && f.size > 0);
-  const existingCount = await db.productImage.count({ where: { productId: product.id } });
+  const existingCount = await db.productImage.count({ where: { productId } });
 
   for (const [i, file] of files.entries()) {
     try {
       const processed = await processUpload(Buffer.from(await file.arrayBuffer()), uploadDir);
       await db.productImage.create({
         data: {
-          productId: product.id,
+          productId,
           basePath: processed.basePath,
           alt: parsed.data.name,
           width: processed.width,
@@ -2871,7 +3262,7 @@ export async function deleteProduct(id: string) {
 }
 ```
 
-- [ ] **Step 4: Implement `src/components/admin/ProductForm.tsx`**
+- [ ] **Step 2: Implement `src/components/admin/ProductForm.tsx`**
 
 ```tsx
 'use client';
@@ -2884,8 +3275,7 @@ export interface ProductFormData {
   name: string;
   description: string;
   categoryId: string;
-  metalType: string;
-  purity: string;
+  metalTypeId: string;
   status: string;
   featured: boolean;
   stoneValueRupees: number;
@@ -2897,16 +3287,17 @@ export interface ProductFormData {
 
 export interface ProductFormOptions {
   categories: Array<{ id: string; name: string }>;
+  metalTypes: Array<{ id: string; label: string }>;
   attributeGroups: Array<{ id: string; name: string; attributes: Array<{ id: string; name: string }> }>;
-  /** What this product's making charge resolves to right now, and where from. */
+  /** What the making charge resolves to if this product's own override is blank. */
   inheritedMakingLabel: string;
 }
 
 const field = 'w-full border border-stone-300 rounded px-3 py-2.5';
 
 export function ProductForm({ product, options }: { product: ProductFormData; options: ProductFormOptions }) {
-  const action = saveProduct.bind(null, product.id);
-  const [state, formAction, pending] = useActionState<SaveProductState, FormData>(action, {});
+  const bound = saveProduct.bind(null, product.id);
+  const [state, formAction, pending] = useActionState<SaveProductState, FormData>(bound, {});
 
   return (
     <form action={formAction} className="space-y-6 max-w-2xl">
@@ -2930,22 +3321,14 @@ export function ProductForm({ product, options }: { product: ProductFormData; op
         </label>
 
         <label className="block space-y-1.5">
-          <span className="text-sm text-stone-600">Metal</span>
-          <select name="metalType" defaultValue={product.metalType} className={field}>
-            <option value="GOLD">Gold</option>
-            <option value="SILVER">Silver</option>
-            <option value="DIAMOND">Diamond</option>
+          <span className="text-sm text-stone-600">Metal type</span>
+          <select name="metalTypeId" required defaultValue={product.metalTypeId} className={field}>
+            <option value="">— chuniye —</option>
+            {options.metalTypes.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
           </select>
-        </label>
-
-        <label className="block space-y-1.5">
-          <span className="text-sm text-stone-600">Purity</span>
-          <select name="purity" defaultValue={product.purity} className={field}>
-            <option value="GOLD_24K">Gold 24K</option>
-            <option value="GOLD_22K">Gold 22K</option>
-            <option value="GOLD_18K">Gold 18K</option>
-            <option value="SILVER_999">Silver 999</option>
-          </select>
+          <span className="block text-xs text-stone-500">
+            Isi ka daily rate is product ka price banata hai.
+          </span>
         </label>
 
         <label className="block space-y-1.5">
@@ -2961,7 +3344,7 @@ export function ProductForm({ product, options }: { product: ProductFormData; op
         <span className="text-sm text-stone-600">Available weights (gram)</span>
         <input name="weights" required defaultValue={product.weightsGrams} placeholder="20, 23, 25" className={field} />
         <span className="block text-xs text-stone-500">
-          Comma se alag kariye. Diamond product me sirf sone ka weight likhiye, heere ka nahi.
+          Comma se alag kariye. Heere wale product me sirf metal ka weight likhiye, heere ka nahi.
         </span>
       </label>
 
@@ -3004,6 +3387,7 @@ export function ProductForm({ product, options }: { product: ProductFormData; op
       <label className="block space-y-1.5">
         <span className="text-sm text-stone-600">Photos</span>
         <input type="file" name="images" accept="image/*" multiple className={field} />
+        <span className="block text-xs text-stone-500">Purani photos hategi nahi, nayi jud jayengi.</span>
       </label>
 
       <label className="flex items-center gap-2 text-sm">
@@ -3022,20 +3406,27 @@ export function ProductForm({ product, options }: { product: ProductFormData; op
 }
 ```
 
-- [ ] **Step 5: Implement the three product pages**
+- [ ] **Step 3: Implement the product list page**
 
 `src/app/admin/products/page.tsx`:
 ```tsx
 import Link from 'next/link';
 import { db } from '@/lib/db';
+import { getShop } from '@/lib/shop';
 import { formatINR } from '@/lib/money';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ProductsPage() {
+  const shop = await getShop();
   const products = await db.product.findMany({
+    where: { shopId: shop.id },
     orderBy: { updatedAt: 'desc' },
-    include: { category: { select: { name: true } }, _count: { select: { weights: true } } },
+    include: {
+      category: { select: { name: true } },
+      metalType: { select: { label: true } },
+      _count: { select: { weights: true } },
+    },
   });
 
   return (
@@ -3050,14 +3441,16 @@ export default async function ProductsPage() {
       <div className="bg-white border border-stone-200 rounded divide-y divide-stone-200">
         {products.length === 0 && <p className="p-6 text-stone-500">Abhi koi product nahi hai.</p>}
         {products.map((p) => (
-          <Link key={p.id} href={`/admin/products/${p.id}`} className="p-4 flex flex-wrap items-center gap-4 hover:bg-stone-50">
+          <Link key={p.id} href={`/admin/products/${p.id}`}
+            className="p-4 flex flex-wrap items-center gap-4 hover:bg-stone-50">
             <span className="font-medium text-stone-900 flex-1 min-w-45">{p.name}</span>
             <span className="text-sm text-stone-500 min-w-24">{p.category.name}</span>
+            <span className="text-sm text-stone-500 min-w-24">{p.metalType.label}</span>
             <span className="text-sm text-stone-500 min-w-20">{p._count.weights} weights</span>
             <span className="text-sm tabular-nums text-stone-700 min-w-40">
               {p.cachedPriceMinPaise !== null && p.cachedPriceMaxPaise !== null
                 ? `${formatINR(p.cachedPriceMinPaise)} – ${formatINR(p.cachedPriceMaxPaise)}`
-                : 'price cache pending'}
+                : 'aaj ka rate nahi hai'}
             </span>
             <span className={`text-xs rounded-full px-2.5 py-1 ${p.status === 'LIVE' ? 'bg-green-100 text-green-900' : 'bg-stone-100 text-stone-600'}`}>
               {p.status}
@@ -3070,22 +3463,26 @@ export default async function ProductsPage() {
 }
 ```
 
+- [ ] **Step 4: Implement the new and edit pages**
+
 `src/app/admin/products/new/page.tsx`:
 ```tsx
 import { db } from '@/lib/db';
-import { getSettings } from '@/lib/settings';
+import { getShop, getMetalTypes } from '@/lib/shop';
 import { ProductForm } from '@/components/admin/ProductForm';
 
 export const dynamic = 'force-dynamic';
 
 export default async function NewProductPage() {
-  const [categories, attributeGroups, settings] = await Promise.all([
-    db.category.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true } }),
+  const shop = await getShop();
+  const [categories, metalTypes, attributeGroups] = await Promise.all([
+    db.category.findMany({ where: { shopId: shop.id }, orderBy: { name: 'asc' }, select: { id: true, name: true } }),
+    getMetalTypes(),
     db.attributeGroup.findMany({
+      where: { shopId: shop.id },
       orderBy: { sortOrder: 'asc' },
       include: { attributes: { orderBy: { sortOrder: 'asc' }, select: { id: true, name: true } } },
     }),
-    getSettings(),
   ]);
 
   return (
@@ -3093,14 +3490,15 @@ export default async function NewProductPage() {
       <h1 className="text-3xl font-semibold text-stone-900">Naya product</h1>
       <ProductForm
         product={{
-          id: null, name: '', description: '', categoryId: '', metalType: 'GOLD', purity: 'GOLD_22K',
+          id: null, name: '', description: '', categoryId: '', metalTypeId: '',
           status: 'DRAFT', featured: false, stoneValueRupees: 0, stoneDescription: '',
           makingPercent: '', weightsGrams: '', attributeIds: [],
         }}
         options={{
           categories,
+          metalTypes: metalTypes.map((m) => ({ id: m.id, label: m.label })),
           attributeGroups,
-          inheritedMakingLabel: `default ${settings.defaultMakingPercentBp / 100}%`,
+          inheritedMakingLabel: `default ${shop.defaultMakingPercentBp / 100}%`,
         }}
       />
     </div>
@@ -3112,7 +3510,7 @@ export default async function NewProductPage() {
 ```tsx
 import { notFound } from 'next/navigation';
 import { db } from '@/lib/db';
-import { getSettings } from '@/lib/settings';
+import { getShop, getMetalTypes } from '@/lib/shop';
 import { resolveMakingPercent } from '@/lib/pricing/making';
 import { ProductForm } from '@/components/admin/ProductForm';
 
@@ -3126,10 +3524,11 @@ async function chainFor(categoryId: string) {
 
   while (id && !seen.has(id)) {
     seen.add(id);
-    const c = await db.category.findUnique({
-      where: { id },
-      select: { name: true, makingPercentBp: true, parentId: true },
-    });
+    const c: { name: string; makingPercentBp: number | null; parentId: string | null } | null =
+      await db.category.findUnique({
+        where: { id },
+        select: { name: true, makingPercentBp: true, parentId: true },
+      });
     if (!c) break;
     chain.push({ name: c.name, makingPercentBp: c.makingPercentBp });
     id = c.parentId;
@@ -3139,6 +3538,7 @@ async function chainFor(categoryId: string) {
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const shop = await getShop();
 
   const product = await db.product.findUnique({
     where: { id },
@@ -3147,21 +3547,22 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
       attributes: { select: { attributeId: true } },
     },
   });
-  if (!product) notFound();
+  if (!product || product.shopId !== shop.id) notFound();
 
-  const [categories, attributeGroups, settings, chain] = await Promise.all([
-    db.category.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true } }),
+  const [categories, metalTypes, attributeGroups, chain] = await Promise.all([
+    db.category.findMany({ where: { shopId: shop.id }, orderBy: { name: 'asc' }, select: { id: true, name: true } }),
+    getMetalTypes(),
     db.attributeGroup.findMany({
+      where: { shopId: shop.id },
       orderBy: { sortOrder: 'asc' },
       include: { attributes: { orderBy: { sortOrder: 'asc' }, select: { id: true, name: true } } },
     }),
-    getSettings(),
     chainFor(product.categoryId),
   ]);
 
-  // Show what would apply if the product's own override were cleared, so the
-  // admin can see the inherited value without deleting anything first.
-  const inherited = resolveMakingPercent({ makingPercentBp: null }, chain, settings.defaultMakingPercentBp);
+  // What WOULD apply if this product's own override were cleared, so the admin
+  // can see the inherited value without deleting anything first.
+  const inherited = resolveMakingPercent({ makingPercentBp: null }, chain, shop.defaultMakingPercentBp);
   const inheritedMakingLabel =
     inherited.source.kind === 'category'
       ? `${inherited.percentBp / 100}% (${inherited.source.categoryName} category se)`
@@ -3176,8 +3577,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
           name: product.name,
           description: product.description ?? '',
           categoryId: product.categoryId,
-          metalType: product.metalType,
-          purity: product.purity,
+          metalTypeId: product.metalTypeId,
           status: product.status,
           featured: product.featured,
           stoneValueRupees: product.stoneValuePaise / 100,
@@ -3186,33 +3586,43 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
           weightsGrams: product.weights.map((w) => w.weightMg / 1000).join(', '),
           attributeIds: product.attributes.map((a) => a.attributeId),
         }}
-        options={{ categories, attributeGroups, inheritedMakingLabel }}
+        options={{
+          categories,
+          metalTypes: metalTypes.map((m) => ({ id: m.id, label: m.label })),
+          attributeGroups,
+          inheritedMakingLabel,
+        }}
       />
     </div>
   );
 }
 ```
 
-- [ ] **Step 6: Verify**
+- [ ] **Step 5: Verify**
 
-Run `npm run dev`. Create a product with weights `20, 23, 25`, leave making blank, set status LIVE, upload a photo. Confirm: the form reports the inherited making value; the list shows a price range; `public/uploads` contains six variant files.
+Run `npm run dev`. Create a product: weights `20, 23, 25`, metal type Gold 22K,
+making blank, status LIVE, one photo. Confirm:
+- the form reports the inherited making value and where it came from
+- the list shows a price range matching Traditional Payal's
+- `public/uploads` gained six variant files
+- editing the product and saving again does not remove the existing photo
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add src/lib/weights.ts src/lib/weights.test.ts src/app/admin/products/ src/components/admin/ProductForm.tsx
+git add src/app/admin/products/ src/components/admin/ProductForm.tsx
 git commit -m "feat: product management with weights, images, attributes and making inheritance"
 ```
 
 ---
 
-### Task 17: Settings screen
+### Task 18: Shop settings and branding
 
 **Files:**
 - Create: `src/app/admin/settings/page.tsx`, `src/app/admin/settings/form.tsx`, `src/app/admin/settings/actions.ts`
 
 **Interfaces:**
-- Consumes: `db.ts`, `settings.ts`, `price-cache.ts`
+- Consumes: `db.ts`, `shop.ts`, `price-cache.server.ts`
 - Produces: server action `saveSettings(prev, formData)`
 
 - [ ] **Step 1: Implement `src/app/admin/settings/actions.ts`**
@@ -3223,38 +3633,46 @@ git commit -m "feat: product management with weights, images, attributes and mak
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { db } from '@/lib/db';
+import { getShop } from '@/lib/shop';
 import { recomputeAllPriceCaches } from '@/lib/price-cache.server';
 
 const percentToBp = z.coerce.number().min(0).max(100).transform((n) => Math.round(n * 100));
 const rupeesToPaiseField = z.coerce.number().positive().transform((n) => Math.round(n * 100));
+const hexColour = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Colour #RRGGBB me likhiye');
+const optional = z.string().optional();
 
 const settingsSchema = z.object({
-  shopName: z.string().min(1),
-  tagline: z.string().optional(),
-  phone: z.string().min(1),
-  whatsapp: z.string().min(1),
+  name: z.string().trim().min(1),
+  tagline: optional,
+  brandPrimary: hexColour,
+  brandInk: hexColour,
+  brandGround: hexColour,
+  fontDisplay: z.string().trim().min(1),
+  fontBody: z.string().trim().min(1),
+  phone: z.string().trim().min(1),
+  whatsapp: z.string().trim().min(1),
   email: z.string().email(),
-  addressLine1: z.string().min(1),
-  addressLine2: z.string().optional(),
-  city: z.string().min(1),
-  state: z.string().min(1),
-  pincode: z.string().min(1),
-  mapUrl: z.string().optional(),
-  hoursText: z.string().min(1),
-  instagramUrl: z.string().optional(),
-  facebookUrl: z.string().optional(),
+  addressLine1: z.string().trim().min(1),
+  addressLine2: optional,
+  city: z.string().trim().min(1),
+  state: z.string().trim().min(1),
+  pincode: z.string().trim().min(1),
+  mapUrl: optional,
+  hoursText: z.string().trim().min(1),
+  instagramUrl: optional,
+  facebookUrl: optional,
   defaultMakingPercentBp: percentToBp,
   gstPercentBp: percentToBp,
   roundingStepPaise: rupeesToPaiseField,
   roundingSmallStepPaise: rupeesToPaiseField,
   roundingThresholdPaise: rupeesToPaiseField,
-  priceDisclaimer: z.string().min(1),
+  priceDisclaimer: z.string().trim().min(1),
   rateWarnHours: z.coerce.number().int().positive(),
   rateStaleHours: z.coerce.number().int().positive(),
-  rateBannerText: z.string().min(1),
-  heroHeading: z.string().min(1),
-  heroSubheading: z.string().min(1),
-  seoLocations: z.string().min(1),
+  rateBannerText: z.string().trim().min(1),
+  heroHeading: z.string().trim().min(1),
+  heroSubheading: z.string().trim().min(1),
+  seoLocations: z.string().trim().min(1),
 });
 
 export type SaveSettingsState = { error?: string; saved?: boolean };
@@ -3266,11 +3684,12 @@ export async function saveSettings(_prev: SaveSettingsState, formData: FormData)
     return { error: `${issue.path.join('.')}: ${issue.message}` };
   }
   if (parsed.data.rateStaleHours <= parsed.data.rateWarnHours) {
-    return { error: 'Stale ke ghante warn ke ghanton se zyada hone chahiye.' };
+    return { error: 'Banner ke ghante warning ke ghanton se zyada hone chahiye.' };
   }
 
-  await db.settings.update({
-    where: { id: 1 },
+  const shop = await getShop();
+  await db.shop.update({
+    where: { id: shop.id },
     data: {
       ...parsed.data,
       tagline: parsed.data.tagline || null,
@@ -3281,75 +3700,66 @@ export async function saveSettings(_prev: SaveSettingsState, formData: FormData)
     },
   });
 
-  // Making default, GST and rounding all feed the price engine.
+  // The making default, GST and the rounding steps all feed the price engine.
   await recomputeAllPriceCaches();
   revalidatePath('/', 'layout');
   return { saved: true };
 }
 ```
 
-- [ ] **Step 2: Implement `src/app/admin/settings/page.tsx`**
+- [ ] **Step 2: Implement `src/app/admin/settings/form.tsx`**
 
-```tsx
-import { getSettings } from '@/lib/settings';
-import { SettingsForm } from './form';
-
-export const dynamic = 'force-dynamic';
-
-export default async function SettingsPage() {
-  const s = await getSettings();
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-semibold text-stone-900">Settings</h1>
-        <p className="text-stone-600 mt-1">Dukaan ki har jankari yahin se badalti hai.</p>
-      </div>
-      <SettingsForm settings={JSON.parse(JSON.stringify(s))} />
-    </div>
-  );
-}
-```
-
-`src/app/admin/settings/form.tsx`:
 ```tsx
 'use client';
 
+import type { ReactNode } from 'react';
 import { useActionState } from 'react';
 import { saveSettings, type SaveSettingsState } from './actions';
 
 const field = 'w-full border border-stone-300 rounded px-3 py-2.5';
 
-function Text({ name, label, value, hint }: { name: string; label: string; value: string; hint?: string }) {
+function Text({ name, label, value, hint, type = 'text' }: {
+  name: string; label: string; value: string; hint?: string; type?: string;
+}) {
   return (
     <label className="block space-y-1.5">
       <span className="text-sm text-stone-600">{label}</span>
-      <input name={name} defaultValue={value} className={field} />
+      <input name={name} type={type} defaultValue={value} className={field} />
       {hint && <span className="block text-xs text-stone-500">{hint}</span>}
     </label>
   );
 }
 
-function Group({ title, children }: { title: string; children: React.ReactNode }) {
+function Group({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
   return (
     <fieldset className="bg-white border border-stone-200 rounded p-6 space-y-4">
       <legend className="px-2 text-sm font-medium text-stone-900">{title}</legend>
+      {hint && <p className="text-sm text-stone-500">{hint}</p>}
       {children}
     </fieldset>
   );
 }
 
-export function SettingsForm({ settings: s }: { settings: Record<string, string | number | null> }) {
+export function SettingsForm({ shop }: { shop: Record<string, string | number | null> }) {
   const [state, action, pending] = useActionState<SaveSettingsState, FormData>(saveSettings, {});
-  const str = (k: string) => String(s[k] ?? '');
-  const pct = (k: string) => String(Number(s[k] ?? 0) / 100);
-  const rup = (k: string) => String(Number(s[k] ?? 0) / 100);
+  const str = (k: string) => String(shop[k] ?? '');
+  const pct = (k: string) => String(Number(shop[k] ?? 0) / 100);
+  const rup = (k: string) => String(Number(shop[k] ?? 0) / 100);
 
   return (
     <form action={action} className="space-y-6 max-w-2xl">
       <Group title="Dukaan">
-        <Text name="shopName" label="Naam" value={str('shopName')} />
+        <Text name="name" label="Naam" value={str('name')} />
         <Text name="tagline" label="Tagline" value={str('tagline')} />
         <Text name="hoursText" label="Timing" value={str('hoursText')} />
+      </Group>
+
+      <Group title="Branding" hint="Website ke rang aur font. Har dukaan apni pehchaan ke saath dikhe.">
+        <Text name="brandPrimary" label="Main colour" value={str('brandPrimary')} type="color" />
+        <Text name="brandInk" label="Text ka colour" value={str('brandInk')} type="color" />
+        <Text name="brandGround" label="Background" value={str('brandGround')} type="color" />
+        <Text name="fontDisplay" label="Heading ka font" value={str('fontDisplay')} hint="Google Fonts ka naam" />
+        <Text name="fontBody" label="Text ka font" value={str('fontBody')} hint="Google Fonts ka naam" />
       </Group>
 
       <Group title="Sampark">
@@ -3369,7 +3779,7 @@ export function SettingsForm({ settings: s }: { settings: Record<string, string 
         <Text name="mapUrl" label="Google Maps link" value={str('mapUrl')} />
       </Group>
 
-      <Group title="Price">
+      <Group title="Price" hint="Inme se kuch bhi badalne par poora catalog turant dobara calculate hota hai.">
         <Text name="defaultMakingPercentBp" label="Default making charge %" value={pct('defaultMakingPercentBp')} />
         <Text name="gstPercentBp" label="GST %" value={pct('gstPercentBp')} hint="CA se confirm kara lijiye." />
         <Text name="roundingStepPaise" label="Rounding step (₹)" value={rup('roundingStepPaise')} />
@@ -3402,20 +3812,49 @@ export function SettingsForm({ settings: s }: { settings: Record<string, string 
 }
 ```
 
-- [ ] **Step 3: Verify**
+- [ ] **Step 3: Implement `src/app/admin/settings/page.tsx`**
 
-Run `npm run dev`, open `/admin/settings`. Change the default making charge to 18%, save, then confirm a product with no override moved up in price on `/admin/products`. Change it back to 15%.
+```tsx
+import { getShop } from '@/lib/shop';
+import { SettingsForm } from './form';
 
-- [ ] **Step 4: Commit**
+export const dynamic = 'force-dynamic';
+
+export default async function SettingsPage() {
+  const shop = await getShop();
+  // Dates cannot cross the server/client boundary as-is; this form only reads
+  // scalars, so serialise them plainly.
+  const plain = JSON.parse(JSON.stringify(shop)) as Record<string, string | number | null>;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-semibold text-stone-900">Settings</h1>
+        <p className="text-stone-600 mt-1">Dukaan ki har jankari yahin se badalti hai.</p>
+      </div>
+      <SettingsForm shop={plain} />
+    </div>
+  );
+}
+```
+
+- [ ] **Step 4: Verify**
+
+Run `npm run dev`, open `/admin/settings`. Change the default making charge to
+18%, save, and confirm a product with no override moved up in price on
+`/admin/products`. Change it back to 15%. Change the shop name and confirm the
+admin nav picks it up.
+
+- [ ] **Step 5: Commit**
 
 ```bash
 git add src/app/admin/settings/
-git commit -m "feat: settings screen — every shop fact editable without a deploy"
+git commit -m "feat: shop settings and branding — every shop fact editable without a deploy"
 ```
 
 ---
 
-### Task 18: Production container and deployment
+### Task 19: Production container and deployment
 
 **Files:**
 - Create: `Dockerfile`, `docker-compose.yml`, `.dockerignore`, `docs/DEPLOYMENT.md`
@@ -3511,16 +3950,17 @@ volumes:
   uploads:
 ```
 
-`app` is published on a host port that the existing Cloudflare Tunnel points at. Postgres is not published at all — nothing outside the compose network reaches it.
+`app` is published on a host port that the existing Cloudflare Tunnel points at.
+Postgres is not published at all — nothing outside the compose network reaches it.
 
 - [ ] **Step 4: Write `docs/DEPLOYMENT.md`**
 
-```markdown
+````markdown
 # Deployment
 
 Target: the Synology NAS, through Coolify, published by the Cloudflare Tunnel
-that already runs there. See spec Section 9 for the survey of that box and why
-the caching decisions below matter.
+already running there. See spec Section 9 for the survey of that box and why the
+caching decisions below matter.
 
 ## First deploy
 
@@ -3531,7 +3971,7 @@ the caching decisions below matter.
    - `APP_PORT` — a free host port; check with `sudo docker ps` first, the NAS
      runs 52 containers
    - `SEED_ADMIN_USERNAME`, `SEED_ADMIN_PASSWORD` — for the one-time seed
-3. Deploy, then run the migration and seed inside the app container:
+3. Deploy, then migrate and seed inside the app container:
    ```bash
    sudo docker compose exec app npx prisma migrate deploy
    sudo docker compose exec app npx tsx prisma/seed.ts
@@ -3542,12 +3982,31 @@ the caching decisions below matter.
 
 ## Cloudflare cache rules
 
-These are what keep the NAS out of the request path. Without them the site is
-as slow as the disk it sits on.
+These are what keep the NAS out of the request path. Without them the site is as
+slow as the disk it sits on.
 
-- `/_next/static/*` and `/uploads/*` — cache everything, edge TTL one year.
-  Both use content-hashed filenames, so a stale cache is impossible.
+- `/_next/static/*` and `/uploads/*` — cache everything, edge TTL one year. Both
+  use content-hashed filenames, so a stale cache is impossible.
 - `/admin/*` — bypass cache entirely.
+
+## Setting this up for another jewellery shop
+
+This software is sold one deployment per shop. To stand up a new one:
+
+1. Deploy the same compose stack with its own `POSTGRES_*`, `SESSION_SECRET` and
+   `APP_PORT`.
+2. Copy `prisma/seed.ts` to a new file and change the shop block and the metal
+   types to that shop's — a shop that deals in 14K or Silver 925 seeds those keys
+   instead. Everything else in the seed is generic.
+3. Run migrate and seed as above.
+4. Point that shop's domain at the new port through the tunnel.
+5. Hand over the admin credentials. Everything else — name, address, phone,
+   colours, fonts, making charge, GST, metal types — they change themselves from
+   the admin panel.
+
+Nothing in the application code is specific to Poddar Jewellers. If a change for
+one shop ever needs a code edit, that is a bug: the value belongs on the `Shop`
+row or in `MetalType`.
 
 ## Moving to a VPS
 
@@ -3559,18 +4018,19 @@ volumes, and repoint the tunnel hostname. Budget about half an hour.
 
 Two volumes hold everything that cannot be rebuilt:
 
-- `pgdata` — the catalog, rate history and settings
+- `pgdata` — the catalog, rate history and shop settings
 - `uploads` — the product photography
 
 Add both to the NAS's existing backup job.
-```
+````
 
 - [ ] **Step 5: Verify the production build**
 
 Run: `npm run build`
 Expected: build succeeds, `.next/standalone/server.js` exists.
 
-Then: `docker compose build` — expected to complete without error.
+Then: `docker compose build`
+Expected: completes without error.
 
 - [ ] **Step 6: Update `docs/STATUS.md`**
 
@@ -3584,9 +4044,9 @@ Replace the "Done" and "Next" sections:
 - Phase 1 design written and committed
 - Project documentation prepared
 - Shareable project brief published
-- **Phase 1A complete:** price engine (fully unit-tested), database schema,
-  settings, admin auth, daily rate screen, product and category management,
-  image pipeline, deployable container
+- **Phase 1A complete:** price engine (fully unit-tested), schema with metal
+  types as data, shop context, admin auth, daily rate screen, metal type,
+  product and category management, image pipeline, deployable container
 
 ## Next
 
@@ -3605,15 +4065,20 @@ git commit -m "feat: production container and deployment guide"
 
 ## Definition of done for Phase 1A
 
-- [ ] `npm test` — all unit tests pass
+- [ ] `npm test` — every unit test passes
 - [ ] `npm run typecheck` — no errors
 - [ ] `npm run build` — production build succeeds
-- [ ] An admin can sign in, save a rate, and see every product's cached price move
+- [ ] An admin signs in, saves a rate, and every product's cached price moves
 - [ ] A rate change above 10% asks for a second confirmation before saving
+- [ ] Adding `SILVER_925` in Metal types makes a new input appear on the daily
+      rate screen, with no code change — the proof the software is not welded to
+      one shop's purities
 - [ ] A product created with weights `20, 23, 25` and no making override reports
       the inherited percentage and its source in the form
-- [ ] Uploading a photo writes six variants under `public/uploads`
+- [ ] Uploading a photo writes six variants under `public/uploads`, and a
+      subsequent edit does not remove them
 - [ ] Changing the default making charge in settings re-prices the catalog
-- [ ] No `price` column exists anywhere in `schema.prisma`
-- [ ] No shop fact — name, phone, address, GST, making default — is read from
-      source anywhere outside `prisma/seed.ts`
+- [ ] Changing the shop name in settings changes it in the admin nav
+- [ ] `grep -c "price " prisma/schema.prisma` returns 0 — no price column exists
+- [ ] `grep -rn "Poddar\|7250580175\|Palojori" src/` returns nothing — no shop
+      fact is read from source outside `prisma/seed.ts`
