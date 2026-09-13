@@ -1127,8 +1127,11 @@ export function rateStatus(
   warnHours: number,
   staleHours: number,
 ): RateStatus {
+  // Both thresholds are exclusive: a rate becomes WARN only once it is PAST
+  // warnHours, and STALE only once it is PAST staleHours. Exactly on the hour
+  // still counts as the gentler state.
   const ageHours = (now.getTime() - enteredAt.getTime()) / MS_PER_HOUR;
-  if (ageHours >= staleHours) return 'STALE';
+  if (ageHours > staleHours) return 'STALE';
   if (ageHours > warnHours) return 'WARN';
   return 'FRESH';
 }
