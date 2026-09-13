@@ -746,7 +746,7 @@ describe('estimate', () => {
       RATES, GST_BP, ROUNDING,
     );
     expect(r.subtotalPaise).toBe(4263000 + 639450 + 4500000);
-    expect(r.gstPaise).toBe(280033); // 3% of Rs 94,024.50
+    expect(r.gstPaise).toBe(282074); // 3% of Rs 94,024.50
   });
 
   it('rounds up to the nearest Rs 10 below the Rs 10,000 threshold', () => {
@@ -754,7 +754,7 @@ describe('estimate', () => {
       { weightMg: 30000, metalKey: 'SILVER_999', makingPercentBp: 1500, stoneValuePaise: 0 },
       RATES, GST_BP, ROUNDING,
     );
-    expect(r.totalPaise).toBe(767448);   // Rs 7,674.48
+    expect(r.totalPaise).toBe(767556);   // Rs 7,675.56
     expect(r.displayPaise).toBe(768000); // Rs 7,680
   });
 
