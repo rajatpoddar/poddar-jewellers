@@ -12,7 +12,7 @@ Poddar Jewellers is a physical jewellery shop. The owner wants the whole shop
 online: a premium browsing experience where customers explore products from
 home and see a realistic price, even though gold and silver rates change daily.
 
-This document specifies **Phase 1 only**. The full roadmap is in Section 12.
+This document specifies **Phase 1 only**. The full roadmap is in Section 13.
 
 ### The core problem
 
@@ -100,12 +100,21 @@ Aaj ke rate par anumaanit, sab tax shaamil
 GST are computed and retained server-side for invoicing (Phase 2) but never
 rendered to the customer.
 
-### Purities supported
+### Metal types are data, not code
 
-Rates entered daily: `GOLD_24K`, `GOLD_22K`, `GOLD_18K`, `SILVER_999` (Rs per gram).
-Every product references exactly one of these. Adding a purity later (e.g.
-SILVER_925) means one new rate field and one new enum value — the engine itself
-does not change.
+Which purities a shop deals in is a property of the shop, not of the software.
+Poddar Jewellers starts with 24K, 22K, 18K and Silver 999; another shop may carry
+14K, Silver 925 or platinum.
+
+So metal types are **rows**, not an enum. Each carries a key, a display label and
+a sort order. A shop adds one from the admin panel and a matching input appears on
+the daily rate screen by itself — no migration, no deploy.
+
+A rate entry is therefore a header (who, when) plus one line per metal type. A
+product points at a metal type rather than naming a purity in code.
+
+The engine takes rates as a plain `Record<string, number>` keyed by metal-type
+key, and throws if a product's metal type has no rate for the day.
 
 ### Diamond and stone products
 
@@ -127,14 +136,16 @@ changing it is a config change, not a code change.
 
 | Table | Purpose |
 |---|---|
-| `rates` | One row per rate update: gold24k, gold22k, gold18k, silver999 (Rs/gram), updatedBy, updatedAt. Latest row is live; older rows are history (feeds the rate chart in Phase 5). |
-| `products` | name, slug, description, metalType (GOLD/SILVER/DIAMOND — a filter facet, distinct from purity: a diamond ring is metalType DIAMOND with purity GOLD_18K), purity, makingPercent (nullable override), stoneValue, stoneDescription, categoryId, status (draft/live), featured, cachedPriceMin, cachedPriceMax, cachedAt |
+| `shops` | One row per shop. Identity, contact, address, branding, and every pricing knob. Nothing describing a shop exists outside this table. |
+| `metal_types` | The purities this shop deals in: key, label, sort order, active flag. Editable from admin. |
+| `rates` | One header row per rate update: who entered it and when. Latest is live; older rows are history (feeds the rate chart in Phase 5). |
+| `rate_lines` | One row per metal type per rate entry: price per gram in paise. |
+| `products` | name, slug, description, facet (GOLD/SILVER/DIAMOND — for filtering, distinct from the metal type: a diamond ring is faceted DIAMOND while its metal type is 18K gold), metalTypeId, makingPercent (nullable override), stoneValue, stoneDescription, categoryId, status (draft/live), featured, cachedPriceMin, cachedPriceMax, cachedAt |
 | `product_weights` | productId, weightGrams, sortOrder. A payal with 20/23/25g has three rows. |
 | `product_images` | productId, path, variants, alt, sortOrder, isPrimary |
 | `categories` | Tree (parentId). Also carries an optional `makingPercent` override. |
 | `attributes` | Grouped tags: OCCASION (wedding, daily-wear, gifting, festive), GENDER (women, men, kids, teens), STYLE |
 | `product_attributes` | Many-to-many join |
-| `settings` | defaultMakingPercent (15), gstPercent (3), shop details, staleness thresholds |
 
 ### Price cache
 
@@ -334,7 +345,44 @@ the most coverage:
 
 ---
 
-## 12. Roadmap context
+## 12. Built to be sold to other jewellery shops
+
+The owner intends to sell this to other jewellery shops. That is a requirement on
+the architecture, so it is recorded here rather than discovered later.
+
+### One deployment per shop
+
+Each shop gets its own container, its own database and its own domain. Selling is
+a matter of standing up an instance and seeding it with that shop's details.
+
+The alternative — one deployment serving every shop, rows separated by a tenant
+column — was rejected for now. A single query missing its tenant filter shows one
+jeweller another jeweller's catalog, pricing and customer list, and that class of
+bug is not acceptable in this business. It also demands billing, self-serve signup
+and domain routing before there is a second customer to justify them.
+
+### What is built now so multi-tenancy stays additive
+
+Three things, cheap now and expensive to retrofit:
+
+1. **Metal types are data** (Section 3), so any shop defines its own purities.
+2. **`Shop` is a real row with a real id**, not a singleton pinned to `id = 1`,
+   and every query resolves its shop through one `getShop()` context helper. The
+   day multi-tenancy is wanted, only that helper changes — from "the one shop" to
+   "the shop this domain belongs to". Every table belonging to a shop already
+   carries `shopId`.
+3. **Branding is settings** — logo, colours and typefaces — so two shops running
+   this do not look like the same website with a different name at the top.
+
+### What is deliberately not built
+
+Billing, self-serve signup, subdomain routing and tenant isolation. These arrive
+when a second real customer does. The first customer is the owner's own shop; it
+has to work there before it is worth selling anywhere.
+
+---
+
+## 13. Roadmap context
 
 | Phase | Scope | Estimate |
 |---|---|---|
@@ -357,7 +405,7 @@ better regardless.
 
 ---
 
-## 13. Inputs still needed from the owner
+## 14. Inputs still needed from the owner
 
 - Domain name (registered, or to be registered)
 - Shop details: legal name, address, phone, WhatsApp number, opening hours
@@ -375,7 +423,7 @@ produced alongside implementation.
 
 ---
 
-## 14. Decisions log
+## 15. Decisions log
 
 | Decision | Choice | Why |
 |---|---|---|
@@ -387,3 +435,5 @@ produced alongside implementation.
 | Hosting | NAS first, built portable | Rs 0 marginal cost, infrastructure already present; escape hatch retained |
 | Wishlist | Browser-local in Phase 1 | Real value without waiting for accounts |
 | Diamond products | In scope for Phase 1 | Separate fixed stone value; the engine handles it cleanly |
+| Sellability | One deployment per shop | A missed tenant filter would leak one jeweller's data to another. Multi-tenancy stays additive via metal-types-as-data, a real `Shop` row and `shopId` columns. |
+| Metal types | Rows, not an enum | Which purities a shop carries is a fact about the shop, not the software |

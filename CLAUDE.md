@@ -45,6 +45,18 @@ constraint, not a nice-to-have.
    or the business rather than the system, it is a setting. The owner stated this
    directly: everything he has told us, he expects to change himself later.
 
+8. **This is a product, not one shop's website.** It will be sold to other
+   jewellery shops, one deployment each. So: metal types are rows, never an enum
+   — a shop adds 14K or Silver 925 from the admin panel and the daily rate screen
+   grows an input by itself. `Shop` is a real row with a real id, never a
+   singleton pinned to `id = 1`, and every query resolves its shop through
+   `getShop()`. Every table belonging to a shop carries `shopId`, even though
+   there is one shop today — that is what keeps multi-tenancy additive instead of
+   a rewrite. Branding (logo, colours, typefaces) is settings, so two customers
+   do not get the same website with a different name on it.
+   Not built until a second real customer exists: billing, self-serve signup,
+   subdomain routing, tenant isolation.
+
 ---
 
 ## Where things are

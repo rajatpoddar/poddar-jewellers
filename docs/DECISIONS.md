@@ -125,3 +125,37 @@ form be explicit and grouped, which matters more here than the flexibility of
 key-value — the admin is going to be a non-technical user.
 
 Seed values come from `PROJECT.md` on first run and are never read from code again.
+
+---
+
+### D11 — Sold as one deployment per shop, not as multi-tenant SaaS
+**2026-09-13**
+
+The owner intends to sell this to other jewellery shops. Two ways to do that:
+
+**A. One deployment per shop** — own container, own database, own domain. Chosen.
+**B. One deployment, every shop, rows separated by `tenantId`** — rejected for now.
+
+B was rejected on two grounds. A single query missing its tenant filter shows one
+jeweller another jeweller's catalog, pricing and eventually customer list; that
+class of bug is not acceptable here. And B demands billing, self-serve signup and
+domain routing before there is a second customer to justify any of it.
+
+Three things are built now anyway, because they are cheap today and painful to
+retrofit:
+
+1. **Metal types become rows, not an enum.** Which purities a shop deals in is a
+   fact about the shop. A shop adds Silver 925 from the admin panel and the daily
+   rate screen grows an input on its own. This also removes the enum from the
+   price engine: rates are a `Record<string, number>` keyed by metal-type key.
+2. **`Shop` is a real row with a real id**, and all access goes through one
+   `getShop()` helper. Every shop-owned table carries `shopId`. The day
+   multi-tenancy is wanted, only `getShop()` changes — resolving from the request
+   domain instead of returning the single shop. The expensive half of the
+   retrofit, the migration and the audit of every query, is already paid for.
+3. **Branding — logo, colours, typefaces — moves into settings**, so two
+   customers do not get the same site with a different name at the top.
+
+Deliberately not built: billing, self-serve signup, subdomain routing, tenant
+isolation. The first customer is the owner's own shop. It has to work there
+before it is worth selling anywhere.
