@@ -6,7 +6,7 @@
 
 **Architecture:** All money is integer paise; all percentages are integer basis points; no float ever accumulates a rupee value. The price engine is a set of pure functions with no database or framework dependency, tested in isolation. Which purities a shop deals in is data, not an enum, so the daily rate screen builds itself from the shop's own metal types. Persistence is Prisma over Postgres. The admin is Next.js App Router server components with server actions. Saving a rate recomputes a per-product price range cache and revalidates cached pages.
 
-**Tech Stack:** Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS v4, PostgreSQL 16, Prisma 6, Vitest 3, jose, bcryptjs, sharp, Docker Compose.
+**Tech Stack:** Next.js 16 (App Router), React 19, TypeScript 5, Tailwind CSS v4, PostgreSQL 16 in production (14 locally), Prisma 7, Vitest 5, jose, bcryptjs, sharp, Docker Compose.
 
 **Spec:** `docs/superpowers/specs/2026-09-13-phase1-catalog-price-engine-design.md`
 
@@ -29,7 +29,11 @@ From the spec and `CLAUDE.md`. Every task inherits these.
 - **GST is 300 bp (3%)** on metal + making + stone. Pending the shop's CA; it is a `Shop` field so changing it is not a deploy.
 - **The daily admin screen stays a 30-second job.** One input per metal type and a Save button. Nothing destructive reachable from it.
 - **Currency renders with Indian digit grouping** — `Rs 3,37,900`, never `Rs 337,900`. Use `toLocaleString('en-IN')`.
-- **Node 22**, package manager `npm`.
+- **Node 22 or newer**, package manager `npm`.
+- **Versions are the current stable ones as of 2026-09-13**, verified against the
+  registry rather than assumed — see D12 in `docs/DECISIONS.md`. `prisma`'s
+  `latest` dist-tag points at an 8.0 release candidate; this project uses the
+  stable 7.10.0.
 
 ---
 
@@ -73,7 +77,7 @@ poddar-jewellers/
 │   ├── auth/
 │   │   ├── session.ts
 │   │   └── session.test.ts
-│   ├── middleware.ts             # protects /admin
+│   ├── proxy.ts                  # optimistic /admin gate (Next 16 renamed middleware)
 │   ├── components/admin/
 │   │   ├── Nav.tsx
 │   │   ├── RateForm.tsx
@@ -83,14 +87,15 @@ poddar-jewellers/
 │       ├── layout.tsx
 │       ├── page.tsx
 │       └── admin/
-│           ├── layout.tsx
-│           ├── page.tsx          # DAILY: today's rate
-│           ├── actions.ts        # saveRate
-│           ├── login/{page.tsx,actions.ts}
-│           ├── metals/{page.tsx,actions.ts}
-│           ├── products/{page.tsx,actions.ts,new/page.tsx,[id]/page.tsx}
-│           ├── categories/{page.tsx,actions.ts}
-│           └── settings/{page.tsx,form.tsx,actions.ts}
+│           ├── login/{page.tsx,form.tsx,actions.ts}   # OUTSIDE the panel group
+│           └── (panel)/          # route group — same URLs, own layout
+│               ├── layout.tsx    # shell + the authoritative auth redirect
+│               ├── page.tsx      # DAILY: today's rate
+│               ├── actions.ts    # saveRate
+│               ├── metals/{page.tsx,form.tsx,actions.ts}
+│               ├── products/{page.tsx,actions.ts,new/page.tsx,[id]/page.tsx}
+│               ├── categories/{page.tsx,actions.ts}
+│               └── settings/{page.tsx,form.tsx,actions.ts}
 ```
 
 `src/lib/pricing/` is pure domain logic and imports nothing from `db.ts` or `next/*`. That is what lets it be exhaustively tested without a database or a server. Anything that touches Prisma lives in a `.server.ts` file so a unit test importing the pure module never drags Prisma into the test process.
@@ -113,7 +118,9 @@ poddar-jewellers/
   "name": "poddar-jewellers",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
@@ -124,28 +131,30 @@ poddar-jewellers/
     "db:seed": "tsx prisma/seed.ts",
     "typecheck": "tsc --noEmit"
   },
-  "prisma": { "seed": "tsx prisma/seed.ts" },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
   "dependencies": {
-    "@prisma/client": "^6.2.0",
+    "@prisma/client": "^7.10.0",
     "bcryptjs": "^2.4.3",
     "jose": "^5.9.6",
-    "next": "^15.1.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "sharp": "^0.33.5",
+    "next": "^16.3.5",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "sharp": "^0.35.4",
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.0.0",
+    "@tailwindcss/postcss": "^4.3.3",
     "@types/bcryptjs": "^2.4.6",
-    "@types/node": "^22.10.0",
+    "@types/node": "^24.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "prisma": "^6.2.0",
-    "tailwindcss": "^4.0.0",
-    "tsx": "^4.19.2",
+    "prisma": "^7.10.0",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.13",
     "typescript": "^5.7.2",
-    "vitest": "^3.0.0"
+    "vitest": "^5.0.0"
   }
 }
 ```
@@ -358,8 +367,9 @@ describe('formatINR', () => {
     expect(formatINR(33790000)).toBe('₹3,37,900');
   });
 
-  it('groups a seven-figure amount', () => {
-    expect(formatINR(1234567800)).toBe('₹12,34,568');
+  it('groups lakhs and crores the Indian way, not in thousands', () => {
+    expect(formatINR(1234567800)).toBe('₹1,23,45,678');
+    expect(formatINR(100000000)).toBe('₹10,00,000');
   });
 
   it('formats small amounts', () => {
@@ -424,7 +434,7 @@ export function formatINR(paise: number): string {
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `npm test -- src/lib/money.test.ts`
-Expected: PASS, 13 tests
+Expected: PASS, 15 tests
 
 - [ ] **Step 5: Commit**
 
@@ -737,7 +747,7 @@ describe('estimate', () => {
       RATES, GST_BP, ROUNDING,
     );
     expect(r.subtotalPaise).toBe(4263000 + 639450 + 4500000);
-    expect(r.gstPaise).toBe(280033); // 3% of Rs 94,024.50
+    expect(r.gstPaise).toBe(282074); // 3% of Rs 94,024.50
   });
 
   it('rounds up to the nearest Rs 10 below the Rs 10,000 threshold', () => {
@@ -745,7 +755,7 @@ describe('estimate', () => {
       { weightMg: 30000, metalKey: 'SILVER_999', makingPercentBp: 1500, stoneValuePaise: 0 },
       RATES, GST_BP, ROUNDING,
     );
-    expect(r.totalPaise).toBe(767448);   // Rs 7,674.48
+    expect(r.totalPaise).toBe(767556);   // Rs 7,675.56
     expect(r.displayPaise).toBe(768000); // Rs 7,680
   });
 
@@ -1118,8 +1128,11 @@ export function rateStatus(
   warnHours: number,
   staleHours: number,
 ): RateStatus {
+  // Both thresholds are exclusive: a rate becomes WARN only once it is PAST
+  // warnHours, and STALE only once it is PAST staleHours. Exactly on the hour
+  // still counts as the gentler state.
   const ageHours = (now.getTime() - enteredAt.getTime()) / MS_PER_HOUR;
-  if (ageHours >= staleHours) return 'STALE';
+  if (ageHours > staleHours) return 'STALE';
   if (ageHours > warnHours) return 'WARN';
   return 'FRESH';
 }
@@ -1174,7 +1187,7 @@ git commit -m "feat: rate staleness classification and weight parsing"
 ### Task 7: Database schema and Postgres
 
 **Files:**
-- Create: `prisma/schema.prisma`, `src/lib/db.ts`, `docker-compose.dev.yml`
+- Create: `prisma/schema.prisma`, `prisma.config.ts`, `src/lib/db.ts`, `docker-compose.dev.yml`
 
 **Interfaces:**
 - Consumes: nothing
@@ -1209,8 +1222,11 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
+
+// Prisma 7 removed `url` from the datasource block. The connection string for
+// migrate and introspect now lives in prisma.config.ts; the runtime client gets
+// its connection from a driver adapter. See Step 2b below.
 
 enum ProductStatus {
   DRAFT
@@ -1466,16 +1482,63 @@ model AdminUser {
 Note the absence of a `Purity` enum and of any `price` column. Metal types are
 rows; price is always computed.
 
+- [ ] **Step 2b: Create `prisma.config.ts`**
+
+Prisma 7 requires this file. It also does not read `.env` by itself.
+
+```ts
+import { defineConfig, env } from 'prisma/config';
+
+// Prisma 7 does not read .env by itself. Node's built-in loader handles it with
+// no extra dependency; in a container the variables are already in the
+// environment and there is no file to read, so a miss here is not an error.
+try {
+  process.loadEnvFile();
+} catch {
+  // No .env file — expected in production.
+}
+
+export default defineConfig({
+  schema: 'prisma/schema.prisma',
+  datasource: {
+    url: env('DATABASE_URL'),
+  },
+  migrations: {
+    seed: 'tsx prisma/seed.ts',
+  },
+});
+```
+
+The `prisma.seed` key in `package.json` is superseded by `migrations.seed` here
+— remove it.
+
 - [ ] **Step 3: Implement `src/lib/db.ts`**
+
+Install the adapter first: `npm install @prisma/adapter-pg@7.10.0`
 
 ```ts
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 
+// Prisma 7 takes its runtime connection through a driver adapter rather than a
+// `url` in the schema. The adapter owns the connection pool.
+function createClient(): PrismaClient {
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    throw new Error('DATABASE_URL is not set');
+  }
+
+  return new PrismaClient({
+    adapter: new PrismaPg({ connectionString }),
+    log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
+  });
+}
+
+// One client per process. Next.js hot-reloads modules in development, which
+// would otherwise open a new pool on every edit until Postgres refuses more.
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
-export const db =
-  globalForPrisma.prisma ??
-  new PrismaClient({ log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'] });
+export const db = globalForPrisma.prisma ?? createClient();
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db;
 ```
@@ -1483,10 +1546,20 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db;
 - [ ] **Step 4: Start Postgres and run the first migration**
 
 ```bash
-cp .env.example .env
+cp .env.example .env   # then set SESSION_SECRET and SEED_ADMIN_PASSWORD
 docker compose -f docker-compose.dev.yml up -d
 npx prisma migrate dev --name init
 ```
+
+On a machine that already runs Postgres, skip the compose file, point
+`DATABASE_URL` at that instance, and create the role and database once:
+
+```bash
+createuser -P poddar          # password: poddar
+createdb -O poddar poddar_jewellers
+psql -d postgres -c "ALTER ROLE poddar CREATEDB;"   # migrate dev needs a shadow database
+```
+
 Expected: migration applied, Prisma client generated.
 
 - [ ] **Step 5: Verify the schema is sound**
@@ -1496,14 +1569,29 @@ Expected: `The schema at prisma/schema.prisma is valid`, no type errors.
 
 Also confirm the two rules the schema must satisfy:
 ```bash
-grep -c "price " prisma/schema.prisma   # expect 0 — no price column
-grep -c "enum Purity" prisma/schema.prisma  # expect 0 — metal types are rows
+grep -cE '^\s+price\s' prisma/schema.prisma   # expect 0 — no price column
+grep -c 'enum Purity' prisma/schema.prisma     # expect 0 — metal types are rows
 ```
+
+Then confirm the client actually reaches the database. `npx tsx -e` compiles as
+CommonJS and rejects top-level `await`, so put this in a file and run it:
+
+```ts
+process.loadEnvFile();
+import('./src/lib/db.ts').then(async ({ db }) => {
+  const tables = await db.$queryRaw<Array<{ tablename: string }>>`
+    SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename`;
+  console.log(tables.map((t) => t.tablename).join(', '));
+  await db.$disconnect();
+});
+```
+
+Expected: all twelve tables plus `_prisma_migrations`.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add prisma/ src/lib/db.ts docker-compose.dev.yml
+git add prisma/ prisma.config.ts src/lib/db.ts docker-compose.dev.yml .env.example package.json
 git commit -m "feat: schema — shop, metal types as rows, catalog, rate lines"
 ```
 
@@ -4079,6 +4167,38 @@ git commit -m "feat: production container and deployment guide"
       subsequent edit does not remove them
 - [ ] Changing the default making charge in settings re-prices the catalog
 - [ ] Changing the shop name in settings changes it in the admin nav
-- [ ] `grep -c "price " prisma/schema.prisma` returns 0 — no price column exists
+- [ ] `grep -cE '^\s+price\s' prisma/schema.prisma` returns 0 — no price column exists
 - [ ] `grep -rn "Poddar\|7250580175\|Palojori" src/` returns nothing — no shop
       fact is read from source outside `prisma/seed.ts`
+
+
+---
+
+## Amendments made during execution
+
+Recorded here so the plan matches what was built. Full reasoning in
+`docs/DECISIONS.md`.
+
+- **Dependency versions** (D12): Next 16.3.5, Prisma 7.10.0, sharp 0.35.4,
+  Vitest 5. Four Prisma-CLI advisories accepted.
+- **Prisma 7** (D13): `prisma.config.ts` holds the datasource URL and the seed
+  command; the client takes a `@prisma/adapter-pg` driver adapter.
+  `ALTER ROLE <user> CREATEDB` is needed for `migrate dev`'s shadow database.
+- **Next 16 renamed `middleware` to `proxy`** (D14). `src/proxy.ts` exports a
+  function named `proxy`; the API is otherwise unchanged.
+- **Admin moved into a `(panel)` route group** (D14). The login page sits
+  outside it, so the panel layout can hard-`redirect()` when signed out rather
+  than conditionally rendering. Next's own proxy documentation says proxy is not
+  an authorization solution, so the layout — which runs server-side beneath every
+  admin page — is the authoritative gate and the proxy is an optimistic check.
+- **Destructive admin actions redirect with a message instead of throwing.** A
+  stack trace is not an answer for the non-technical admin this is being handed
+  to (Hard Rule 4).
+- **Two test expectations in this plan were arithmetically wrong** and were
+  corrected against independently computed figures: `formatINR(1234567800)` is
+  `Rs 1,23,45,678`; GST on Rs 94,024.50 is 282074 paise; the 30g silver total is
+  767556 paise.
+- **`rateStatus` used inconsistent thresholds** (warn exclusive, stale
+  inclusive). Both are exclusive now.
+- **`npx tsx -e` compiles as CommonJS** and rejects top-level `await`. Ad-hoc
+  database checks belong in a file.

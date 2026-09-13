@@ -159,3 +159,97 @@ retrofit:
 Deliberately not built: billing, self-serve signup, subdomain routing, tenant
 isolation. The first customer is the owner's own shop. It has to work there
 before it is worth selling anywhere.
+
+---
+
+### D12 — Dependency versions, and four accepted Prisma CLI advisories
+**2026-09-13**
+
+The plan was drafted against Next 15, Prisma 6, Vitest 3 and sharp 0.33. The
+registry was checked at install time and the ecosystem had moved on; those
+versions carried live advisories. Current stable versions were adopted instead:
+
+| | Plan | Installed |
+|---|---|---|
+| next | 15 | **16.3.5** |
+| prisma / @prisma/client | 6 | **7.10.0** |
+| sharp | 0.33.5 | **0.35.4** |
+| vitest | 3 | **5.0.0** |
+
+`sharp` mattered most: 0.33.5 inherits four libvips CVEs, and sharp is what
+processes every photo a shop uploads. Upgrading it closed those, and the Next
+upgrade also cleared a transitive PostCSS XSS advisory.
+
+**Deliberately not taken:** `prisma`'s `latest` dist-tag points at `8.0.0-rc.14`.
+A release candidate is not what a shop's catalog should run on; the stable
+`7.10.0` (`prev` tag) is used instead. TypeScript stays on 5.x — 7.x is a
+ground-up rewrite and carries risk this project has no reason to take. zod stays
+on 3.x and jose on 5.x: neither has an advisory, and both are pinned by working
+code.
+
+**Four high advisories remain, accepted.** All four sit inside the `prisma` CLI
+devDependency — `@prisma/config`, `deepmerge-ts`, `mysql2`, and the `prisma`
+umbrella entry. `npm audit` proposes "fixing" them by downgrading to prisma
+6.19.3, which reintroduces what was just closed. They are not reachable here:
+`mysql2` is a MySQL driver the CLI bundles and a PostgreSQL project never loads,
+and `deepmerge-ts` merges our own schema config, not untrusted input. Recheck
+when Prisma 8 goes stable.
+
+Local development runs PostgreSQL 14 (already installed via Homebrew) rather than
+16; production is 16 in the container. The schema uses nothing version-specific.
+Docker is not installed on the development machine — it is needed only for the
+production image, which is built on the NAS.
+
+---
+
+### D13 — Prisma 7 config and driver adapter
+**2026-09-13**
+
+Prisma 7 removed `url` from the schema's `datasource` block. Two consequences,
+both adopted rather than worked around:
+
+1. **`prisma.config.ts`** now holds the migrate/introspect connection string and
+   the seed command (which supersedes the `prisma.seed` key in `package.json`).
+   Prisma 7 does not read `.env` on its own, so the config calls Node's built-in
+   `process.loadEnvFile()` inside a try/catch — no `dotenv` dependency, and a
+   missing file in a container is not an error.
+2. **The runtime client takes a driver adapter**: `@prisma/adapter-pg` wrapping
+   a `pg` pool, passed as `new PrismaClient({ adapter })`.
+
+Local development also needs `ALTER ROLE poddar CREATEDB`, because
+`prisma migrate dev` builds a shadow database to diff against. Production uses
+`prisma migrate deploy`, which does not.
+
+One testing note worth keeping: `npx tsx -e` compiles as CommonJS and rejects
+top-level `await`. Ad-hoc database checks go in a file, not in `-e`.
+
+---
+
+### D14 — Next 16 proxy, and where the admin gate actually lives
+**2026-09-14**
+
+Next 16 renamed the `middleware` file convention to `proxy`. `src/proxy.ts`
+exports a function named `proxy`; the API is otherwise identical.
+
+Reading Next's own guide on it changed the design. It says plainly that proxy
+"should not be used as a full session management or authorization solution" —
+it is for optimistic checks. The original plan had it as the only gate in front
+of the admin pages, with the layout merely rendering children bare when signed
+out. A bypassed proxy would then have rendered admin data.
+
+So the admin panel moved into a `(panel)` route group with the login page
+outside it. Route groups do not change URLs, so `/admin`, `/admin/metals` and
+the rest are untouched, but the panel now has its own layout that can
+`redirect('/admin/login')` outright. That layout runs on the server beneath
+every admin page, which makes it the authoritative gate; the proxy stays as the
+optimistic check that saves a round trip. Server actions check `getCurrentAdmin()`
+independently, so authorization holds at three layers.
+
+Two smaller things from the same session:
+
+- Next 16's `next dev` appends a block to `CLAUDE.md` on every run and re-adds it
+  if removed. It is committed rather than fought.
+- Destructive admin actions (deactivating a metal type, deleting a category)
+  redirect back with a readable message instead of throwing. The plan had them
+  throw; a stack trace is not an answer for the non-technical admin this is being
+  handed to.

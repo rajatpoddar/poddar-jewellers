@@ -1,0 +1,16 @@
+# Local Postgres for anyone who has Docker. On a machine that already runs
+# Postgres (as the author's does), skip this and point DATABASE_URL at that
+# instance instead — see .env.example.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: poddar
+      POSTGRES_PASSWORD: poddar
+      POSTGRES_DB: poddar_jewellers
+    ports:
+      - "5544:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+volumes:
+  pgdata:
