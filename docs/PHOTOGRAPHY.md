@@ -43,6 +43,13 @@ lagega.
 
 Kam se kam #1 aur #3 zaroor chahiye.
 
+Upar ke 4 shots **nayi photography** ke liye hain. Jo supplier ki tray photos
+pehle se hain, unse kaam chalane ka tareeka `docs/AI-IMAGERY.md` me hai — wahan
+3 photos hain (main, zoom, pehne hue), kyunki scale shot AI se bharosemand nahi
+banta. Ek baat wahan se yahan bhi yaad rakhiye: **AI se banai gayi har photo ko
+asli ke bagal me rakh kar ginti karni hoti hai** — layer, latkan, motif. Design
+badla to customer dukaan aakar nirash hoga.
+
 ---
 
 ## Karna hai

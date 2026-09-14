@@ -18,13 +18,17 @@ Built and verified:
 - **Schema** — metal types as rows, not an enum; `shopId` on every shop-owned table
 - **Shop context** — one `getShop()`, the single thing multi-tenancy would change
 - **Admin** — login, daily rate screen, metal types, categories, products, settings
+- **Photo prompts** — `/admin/photos` builds the three AI image prompts for one
+  product from a supplier's tray photo. Pure builder in `src/lib/ai-prompts.ts`,
+  keyed to shot types rather than categories so no shop needs a code edit (D16).
+  The method it implements is `docs/AI-IMAGERY.md`.
 - **Image pipeline** — content-hashed AVIF/WebP at three widths
 - **Deployment** — Dockerfile, compose stack, and a guide covering another shop
 - **Design system** — token layer driven by the `Shop` row, component
   vocabulary in `src/components/ui/`, every admin screen rebuilt on both.
   `docs/DESIGN-SYSTEM.md` is the source of truth; D15 records why.
 
-80 tests pass. `tsc --noEmit` clean. Production build succeeds.
+111 tests pass. `tsc --noEmit` clean. Production build succeeds.
 
 Two of those tests enforce rules rather than behaviour, which is why they exist
 as tests and not as lines in a checklist:
@@ -45,6 +49,12 @@ as tests and not as lines in a checklist:
 - Making cascade re-prices live: 15% default → 18% → Payal category 12% → restored
 - The seed ran three times with no duplication
 - **Adding `SILVER_925` grew the rate screen by one input, with no code change**
+- `/admin/photos`, at 1440px and 375px: the prompt rebuilds as the shop types,
+  choosing Rani haar swaps the row/piece boxes for an inner/outer select, and
+  Copy puts the real text on the system clipboard (checked with `pbpaste`).
+  Looking at that clipboard output caught a defect the tests had not: a shot
+  type whose own ignore-phrase contained ", and" broke the sentence it was
+  spliced into. Fixed, and a test now asserts the list joins with exactly one.
 
 Design system, in a browser at 1440px, 1280px and 375px:
 
@@ -85,13 +95,17 @@ Design system, in a browser at 1440px, 1280px and 375px:
 
 1. Write the Phase 1B plan — the storefront. It builds on
    `src/components/ui/` and `docs/DESIGN-SYSTEM.md`, not on fresh markup.
-2. Enter the real catalog through the admin panel
+2. Enter the real catalog through the admin panel. The photos for it come out
+   of `/admin/photos`; the tray originals are in `media/`.
 
 ## Blocked on the owner
 
-- **GST treatment** — 3% on the full value, pending his CA (`PROJECT.md` Q1)
 - Domain not yet purchased
 - Real logo and real product photos — placeholders do not block the build
+
+**GST is no longer blocked.** The owner will set it from the Settings screen;
+`Shop.gstPercentBp` already defaults to 3% (`300` basis points). Nothing in the
+code was waiting on the answer — only the number in one editable field was.
 
 ## Not yet built
 

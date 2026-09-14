@@ -306,3 +306,41 @@ component vocabulary. Destructive actions were `text-sm underline text-stone-500
 — pixel-identical to Save; delete is now the only red thing on its screen, with
 a trash icon, away from the primary button. And the admin nav had no active
 state at all, so no screen told you where you were.
+
+---
+
+### D16 — Image prompts are keyed to a shot type, not to a category
+
+The admin has a screen that hands the shop three ready prompts for turning a
+supplier's tray photo into one product's three website photos. The question was
+what the shop picks from to get them.
+
+The obvious answer was the `Category` rows it already has. It was wrong. A
+category is a row the shop edits itself: this one seeded Necklaces, Rings,
+Earrings, Bangles, Payal and Mangalsutra, and the trays it actually shoots hold
+jhumka, tops, lockets, bali, rani haar, two thicknesses of chain, bracelets and
+shakha. Those are not the same list and never will be, and a second shop's list
+will differ again. Keying the prompts to categories would mean a shop adding one
+gets an empty screen until someone edits code — exactly the failure Hard Rule 8
+names as a bug.
+
+What does not vary between shops is how a kind of jewellery is photographed. A
+hoop is shot on an ear whoever sells it; a conch-shell bangle has to be stopped
+from turning gold in any catalogue. So `src/lib/ai-prompts.ts` carries a fixed
+list of shot types, and the screen's dropdown is that list. No schema change, no
+migration, and nothing for a new shop to configure.
+
+Everything that *is* shop-specific is injected: the background colour comes from
+`Shop.brandGround` and the metal name from the shop's own `MetalType` rows, so
+a shop with a near-black ground or a silver line gets correct prompts with no
+edit. `design-system.test.ts` enforces half of that for free — a literal hex
+anywhere under `src/` fails the suite, so the colour *cannot* be baked in.
+
+The cost is that the shop picks the shot type itself rather than having it
+implied by the product's category. For a nine-item dropdown on a screen used
+during catalogue entry, that is cheaper than a migration and a per-category
+setting a non-technical user would have to understand.
+
+The method these prompts implement — isolate in one pass, then shoot the
+isolated image in a second — is in `docs/AI-IMAGERY.md`, which is the long form
+and the place to change the wording. The module is what the screen reads.

@@ -115,11 +115,12 @@ alternative are in `docs/DEPLOYMENT.md`.
 | [Phase 1 spec](docs/superpowers/specs/2026-09-13-phase1-catalog-price-engine-design.md) | **Source of truth** for the design: price engine, data model, storefront, deployment, sellability | Before any Phase 1 work |
 | [Phase 1A plan](docs/superpowers/plans/2026-09-13-phase1a-core-price-engine-admin.md) | The 19 tasks that built the admin, with an amendments section recording where reality differed | When touching something it built |
 | `docs/DESIGN-SYSTEM.md` | **Source of truth for the interface**: tokens, components, the rules that are enforced | Before any UI work, always |
-| `docs/DECISIONS.md` | Append-only log, D1-D15, each with its reason | Before revisiting a settled choice |
+| `docs/DECISIONS.md` | Append-only log, D1-D16, each with its reason | Before revisiting a settled choice |
 | `docs/PROJECT.md` | Shop facts, roadmap, open questions | When you need a real-world fact |
 | `docs/DEPLOYMENT.md` | NAS deploy, Cloudflare cache rules, standing this up for another shop, local setup | Deploying or onboarding a new shop |
 | `docs/ADMIN-GUIDE.md` | How to use the admin, written in Hinglish for the shop | Changing admin UX |
 | `docs/PHOTOGRAPHY.md` | Shooting guide, written for the photographer | Photo/asset work |
+| `docs/AI-IMAGERY.md` | Turning supplier tray photos into per-product site images: the two-pass method, category-wise prompts, and hero/poster work | Image or asset generation |
 
 **Do not duplicate the spec into other docs.** If a design fact changes, change
 it in the spec and link to it. Duplicated facts go stale and then mislead.
@@ -140,6 +141,9 @@ src/lib/
   rates.ts           staleness classification, significantMoves (the >10% guard)
   price-cache.ts     priceRange across a product's weight options
   labels.ts          admin copy shared between screens, so wording cannot drift
+  ai-prompts.ts      the shot types and the prompt builder behind /admin/photos,
+                     pure and shop-agnostic — colours and metal come from the
+                     Shop row, never from here. See D16.
   db.ts              Prisma client singleton, via the pg driver adapter
   shop.ts            getShop(), getPricingConfig(), getMetalTypes()
   *.server.ts        the database-backed halves, kept separate so unit tests
@@ -162,6 +166,7 @@ src/proxy.ts         optimistic /admin gate (Next 16 renamed middleware → prox
 src/app/admin/
   login/             OUTSIDE the (panel) group, so it skips the auth redirect
   (panel)/           route group: same URLs, own layout, authoritative auth gate
+    photos/          AI image prompts, copy-ready. No database writes.
 ```
 
 **Authorization holds at three layers**, deliberately: `proxy.ts` is optimistic,

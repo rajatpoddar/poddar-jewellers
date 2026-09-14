@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { cx } from '@/components/ui/cx';
 import {
+  CameraIcon,
   CategoryIcon,
   MetalIcon,
   ProductIcon,
@@ -22,6 +23,7 @@ const LINKS: Array<{ href: string; label: string; icon: ReactNode }> = [
   { href: '/admin/products', label: 'Products', icon: <ProductIcon /> },
   { href: '/admin/categories', label: 'Categories', icon: <CategoryIcon /> },
   { href: '/admin/metals', label: 'Metal types', icon: <MetalIcon /> },
+  { href: '/admin/photos', label: 'Photo prompts', icon: <CameraIcon /> },
   { href: '/admin/settings', label: 'Settings', icon: <SettingsIcon /> },
 ];
 

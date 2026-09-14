@@ -56,7 +56,7 @@ settings, not constants.
 | Default making charge | **15%**, on every product |
 | Category override | Set from admin, per category |
 | Product override | Set from admin, per product |
-| GST | 3% on the full value — **pending CA confirmation** |
+| GST | 3% on the full value. Editable in Settings; `Shop.gstPercentBp` defaults to `300`. |
 | Rounding | Always up, to the nearest Rs 100 (Rs 10 under Rs 10,000) |
 
 The owner confirmed 15% applies across the board today. Category and product
@@ -112,7 +112,7 @@ Phase boundaries and estimates are in the spec, Section 12. Summary:
 
 | # | Question | Needed by | Status |
 |---|---|---|---|
-| 1 | GST treatment — 3% on the full value (metal + making + stone)? | Before launch | **Ask the CA** |
+| 1 | GST treatment — 3% on the full value (metal + making + stone)? | Before launch | **Closed.** Owner sets it from the Settings screen; 3% is the default. |
 | 2 | GSTIN | Phase 2 (invoicing) | Open |
 | 3 | Domain purchased? | Before deployment | Open |
 | 4 | Real logo | Whenever ready — the shop name is set in type until then | Open |

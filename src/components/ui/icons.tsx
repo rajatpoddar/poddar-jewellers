@@ -96,3 +96,17 @@ export const LogoutIcon = () => (
     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
   </Svg>
 );
+
+export const CameraIcon = () => (
+  <Svg>
+    <path d="M3 8.5A1.5 1.5 0 0 1 4.5 7h2L8 4.5h8L17.5 7h2A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5Z" />
+    <circle cx="12" cy="13" r="3.2" />
+  </Svg>
+);
+
+export const CopyIcon = () => (
+  <Svg>
+    <rect x="9" y="9" width="11" height="11" rx="2" />
+    <path d="M5 15a2 2 0 0 1-1-1.7V6a2 2 0 0 1 2-2h7.3A2 2 0 0 1 15 5" />
+  </Svg>
+);
