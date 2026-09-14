@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from 'react';
 import Link from 'next/link';
 import { cx } from './cx';
 
@@ -57,6 +57,14 @@ export function Button({
   );
 }
 
+export interface ButtonLinkProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
+  href: string;
+  intent?: ButtonIntent;
+  size?: ButtonSize;
+  className?: string;
+  children: ReactNode;
+}
+
 /** A link that has to read as a button — "Naya product", "Wapas". */
 export function ButtonLink({
   href,
@@ -64,15 +72,10 @@ export function ButtonLink({
   size = 'md',
   className,
   children,
-}: {
-  href: string;
-  intent?: ButtonIntent;
-  size?: ButtonSize;
-  className?: string;
-  children: ReactNode;
-}) {
+  ...props
+}: ButtonLinkProps) {
   return (
-    <Link href={href} className={cx(BASE, SIZES[size], INTENTS[intent], className)}>
+    <Link href={href} className={cx(BASE, SIZES[size], INTENTS[intent], className)} {...props}>
       {children}
     </Link>
   );
