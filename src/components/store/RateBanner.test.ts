@@ -1,11 +1,5 @@
 import { describe, it, expect } from 'vitest';
-
-export function getStalenessBannerText(hoursOld: number): string | null {
-  if (hoursOld > 48) {
-    return 'Rate 2 din se update nahi hua — confirm karne ke liye call kariye';
-  }
-  return null;
-}
+import { getStalenessBannerText } from './RateBanner';
 
 describe('getStalenessBannerText', () => {
   it('returns warning banner text if rates are >48 hours old', () => {

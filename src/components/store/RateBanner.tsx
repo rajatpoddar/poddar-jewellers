@@ -1,5 +1,11 @@
 import { Notice } from '@/components/ui/Notice';
-import { getStalenessBannerText } from './RateBanner.test';
+
+export function getStalenessBannerText(hoursOld: number): string | null {
+  if (hoursOld > 48) {
+    return 'Rate 2 din se update nahi hua — confirm karne ke liye call kariye';
+  }
+  return null;
+}
 
 export function RateBanner({ hoursOld }: { hoursOld: number }) {
   const warning = getStalenessBannerText(hoursOld);
