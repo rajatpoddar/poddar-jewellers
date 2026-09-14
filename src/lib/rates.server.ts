@@ -39,3 +39,29 @@ export const getRateSnapshot = cache(async () => {
     status: rateStatus(latest.enteredAt, new Date(), shop.rateWarnHours, shop.rateStaleHours),
   };
 });
+
+export const getLatestRateSet = cache(async () => {
+  const shop = await getShop();
+
+  const rate = await db.rate.findFirst({
+    where: { shopId: shop.id },
+    orderBy: { createdAt: 'desc' },
+    include: {
+      lines: {
+        include: {
+          metalType: true,
+        },
+        orderBy: {
+          metalType: { sortOrder: 'asc' },
+        },
+      },
+    },
+  });
+  if (!rate) return null;
+
+  return {
+    ...rate,
+    effectiveAt: rate.createdAt,
+  };
+});
+
