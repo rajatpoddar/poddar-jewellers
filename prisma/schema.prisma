@@ -11,6 +11,23 @@ enum ProductStatus {
   LIVE
 }
 
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  IN_PROGRESS
+  READY
+  COMPLETED
+  CANCELLED
+}
+
+enum ActivityType {
+  PRODUCT_VIEW
+  WISHLIST_ADD
+  WISHLIST_REMOVE
+  SEARCH_QUERY
+  WHATSAPP_ENQUIRE
+}
+
 /// One row per shop. Everything describing a shop or its business rules lives
 /// here and is editable from the admin panel — nothing may be hardcoded.
 ///
@@ -51,6 +68,11 @@ model Shop {
   instagramUrl String?
   facebookUrl  String?
 
+  // Evolution API Config
+  evolutionApiUrl   String  @default("http://192.168.29.101:8087")
+  evolutionApiKey   String?
+  evolutionInstance String  @default("NregaBot")
+
   // Pricing
   defaultMakingPercentBp Int    @default(1500)
   gstPercentBp           Int    @default(300)
@@ -72,12 +94,15 @@ model Shop {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  metalTypes      MetalType[]
-  categories      Category[]
-  products        Product[]
-  rates           Rate[]
-  admins          AdminUser[]
-  attributeGroups AttributeGroup[]
+  metalTypes         MetalType[]
+  categories         Category[]
+  products           Product[]
+  rates              Rate[]
+  admins             AdminUser[]
+  attributeGroups    AttributeGroup[]
+  customers          Customer[]
+  customerActivities CustomerActivity[]
+  orders             Order[]
 }
 
 /// The purities this shop deals in. Data, never an enum: another shop may carry
@@ -174,11 +199,14 @@ model Product {
   cachedPriceMaxPaise Int?
   cachedAt            DateTime?
 
-  weights    ProductWeight[]
-  images     ProductImage[]
-  attributes ProductAttribute[]
-  createdAt  DateTime           @default(now())
-  updatedAt  DateTime           @updatedAt
+  weights       ProductWeight[]
+  images        ProductImage[]
+  attributes    ProductAttribute[]
+  wishlistItems WishlistItem[]
+  activities    CustomerActivity[]
+  orderItems    OrderItem[]
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
 
   @@unique([shopId, slug])
   @@index([shopId, categoryId, status])
@@ -259,4 +287,134 @@ model AdminUser {
   passwordHash String
   name         String
   createdAt    DateTime @default(now())
+}
+
+model Customer {
+  id     String @id @default(cuid())
+  shopId String
+  shop   Shop   @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  phone        String
+  name         String
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  pincode      String?
+  notes        String? // Diary notes (e.g., preference, family relation)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sessions   CustomerSession[]
+  wishlist   WishlistItem[]
+  orders     Order[]
+  activities CustomerActivity[]
+
+  @@unique([shopId, phone])
+  @@index([shopId, phone])
+}
+
+model CustomerSession {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([customerId])
+  @@index([token])
+}
+
+model OtpVerification {
+  id         String    @id @default(cuid())
+  shopId     String
+  phone      String
+  otpHash    String
+  expiresAt  DateTime
+  attempts   Int       @default(0)
+  verifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([shopId, phone])
+}
+
+model WishlistItem {
+  id         String   @id @default(cuid())
+  shopId     String
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([customerId, productId])
+  @@index([shopId, customerId])
+}
+
+model CustomerActivity {
+  id         String           @id @default(cuid())
+  shopId     String
+  shop       Shop             @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  customerId String?
+  customer   Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  sessionId String?
+  eventType ActivityType
+  productId String?
+  product   Product?          @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  metadata  String? // JSON string for extra data (e.g., search term, weight selected)
+  createdAt DateTime @default(now())
+
+  @@index([shopId, customerId, createdAt])
+  @@index([shopId, eventType])
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  shopId      String
+  shop        Shop        @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  orderNumber String      @unique
+  customerId  String
+  customer    Customer    @relation(fields: [customerId], references: [id])
+  status      OrderStatus @default(PENDING)
+
+  requiredByDate DateTime? // e.g. Marriage or Festival target date
+  customerNotes  String?
+
+  // Financial breakdown snapshot (paise)
+  metalPaise    Int
+  makingPaise   Int
+  stonePaise    Int
+  gstPaise      Int
+  roundingPaise Int
+  totalPaise    Int
+
+  items     OrderItem[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([shopId, status])
+  @@index([shopId, customerId])
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  productName     String
+  weightMg        Int
+  weightGrams     Float
+  metalRatePaise  Int
+  makingPercentBp Int
+  stoneValuePaise Int
+  pricePaise      Int
+
+  @@index([orderId])
 }
