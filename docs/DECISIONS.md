@@ -310,6 +310,7 @@ state at all, so no screen told you where you were.
 ---
 
 ### D16 — Image prompts are keyed to a shot type, not to a category
+**2026-09-14**
 
 The admin has a screen that hands the shop three ready prompts for turning a
 supplier's tray photo into one product's three website photos. The question was
@@ -344,3 +345,20 @@ setting a non-technical user would have to understand.
 The method these prompts implement — isolate in one pass, then shoot the
 isolated image in a second — is in `docs/AI-IMAGERY.md`, which is the long form
 and the place to change the wording. The module is what the screen reads.
+
+---
+
+### D17 — Phase 1B Storefront, Hero Carousel & ui-ux-pro-max luxury design direction
+**2026-09-15**
+
+Built the complete customer storefront (Phase 1B) for Poddar Jewellers: Homepage, Category listing with filters & sorting (`/c/[...slug]`), Product Detail Page (`/p/[slug]`) with live weight selector & dynamic price calculation (`estimate()`), 1-tap WhatsApp Enquiry deep-links (`wa.me`), Certified Rates page (`/rates`), and Shop Contact & Location page (`/contact`).
+
+Two key UX/Design decisions were made during storefront implementation:
+
+1. **Daily Metal Rates Strip removed from Public Homepage**:
+   Owner decision. Daily metal rates are updated by the admin to drive the price engine, but showing a rate ticker on the main storefront homepage diluted the luxury shopping feel. Daily rates remain accessible on the dedicated local SEO `/rates` page and in `/admin`.
+   
+2. **`ui-ux-pro-max` Luxury Visual Direction + Hero Carousel**:
+   Upgraded the storefront from a basic catalog grid to an immersive high-end luxury showcase using `ui-ux-pro-max` design intelligence. Added an interactive 3-slide `HeroCarousel` (Royal Heritage, Bridal Masterpieces, Showroom Craftsmanship), luxury trust pillars ("The Poddar Promise"), magazine-style category tiles with gradient overlays, and AI-generated luxury imagery mapped from `public/images/`.
+
+All 124 unit tests, `design-system.test.ts` (zero hex/palette/emoji violations) and `no-hardcoded-shop.test.ts` pass cleanly. Prompts documented in `COMPLETE_IMAGE_PROMPTS.md`.

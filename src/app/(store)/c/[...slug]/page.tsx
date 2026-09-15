@@ -1,9 +1,25 @@
 import { notFound } from 'next/navigation';
-import Link from 'next/link';
+import Image from 'next/image';
 import { db } from '@/lib/db';
 import { getShop } from '@/lib/shop';
 import { ProductCard } from '@/components/store/ProductCard';
 import { parseSlugArray } from '../slug';
+
+function getCategoryImage(slug: string): string | undefined {
+  const lower = slug.toLowerCase();
+  if (lower.includes('choker')) return '/images/cat-chokers.png';
+  if (lower.includes('necklace') || lower.includes('haar')) return '/images/cat-necklaces.png';
+  if (lower.includes('earring') || lower.includes('jhumka') || lower.includes('top') || lower.includes('bali')) return '/images/cat-earrings.png';
+  if (lower.includes('bangle') || lower.includes('kangan') || lower.includes('kada')) return '/images/cat-bangles.png';
+  if (lower.includes('bridal') || lower.includes('set')) return '/images/cat-bridal.png';
+  if (lower.includes('ring') || lower.includes('angoothi')) return '/images/cat-rings.png';
+  if (lower.includes('payal') || lower.includes('anklet')) return '/images/cat-payal.png';
+  if (lower.includes('mangalsutra') || lower.includes('tanmaniya')) return '/images/cat-mangalsutra.png';
+  if (lower.includes('pendant') || lower.includes('locket')) return '/images/cat-pendants.png';
+  if (lower.includes('chain')) return '/images/cat-chains.png';
+  if (lower.includes('coin')) return '/images/cat-coins.png';
+  return undefined;
+}
 
 type Props = {
   params: Promise<{ slug: string[] }>;
@@ -36,32 +52,44 @@ export default async function CategoryPage({ params, searchParams }: Props) {
       categoryId: category.id,
       status: 'LIVE',
     },
-    include: { images: { orderBy: { sortOrder: 'asc' } } },
+    include: { images: { orderBy: { sortOrder: 'asc' } }, category: true },
     orderBy,
   });
 
+  const categoryImg = getCategoryImage(category.slug);
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
-      <div className="border-b border-line pb-4 flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <h1 className="font-display text-3xl text-ink font-bold">{category.name}</h1>
-          {(category as { description?: string | null }).description && (
-            <p className="text-ink-muted text-sm mt-1">{(category as { description?: string | null }).description}</p>
-          )}
+      {categoryImg ? (
+        <div className="relative h-48 sm:h-64 rounded-card overflow-hidden border border-line bg-surface-sunk">
+          <Image
+            src={categoryImg}
+            alt={category.name}
+            fill
+            className="object-cover"
+            priority
+            sizes="100vw"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-ground/90 via-ground/60 to-transparent flex items-center p-6 sm:p-10">
+            <div className="max-w-xl space-y-2">
+              <span className="text-xs font-bold uppercase tracking-widest text-brand">Exclusive Collection</span>
+              <h1 className="font-display text-3xl sm:text-4xl font-extrabold text-ink">{category.name}</h1>
+              <p className="text-xs sm:text-sm text-ink-muted">
+                100% BIS Hallmarked purity ke saath handcrafted {category.name} collection.
+              </p>
+            </div>
+          </div>
         </div>
-        <div className="flex items-center space-x-2 text-sm text-ink-muted">
-          <label htmlFor="sort-select" className="font-medium">Sort by:</label>
-          <select
-            id="sort-select"
-            defaultValue={sort || 'newest'}
-            className="bg-surface border border-line rounded-field px-3 py-1.5 text-sm text-ink focus:outline-none focus:border-line-strong"
-          >
-            <option value="newest">Newest</option>
-            <option value="price_asc">Price: Low to High</option>
-            <option value="price_desc">Price: High to Low</option>
-          </select>
+      ) : (
+        <div className="border-b border-line pb-4 flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <h1 className="font-display text-3xl text-ink font-bold">{category.name}</h1>
+            {(category as { description?: string | null }).description && (
+              <p className="text-ink-muted text-sm mt-1">{(category as { description?: string | null }).description}</p>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {products.length === 0 ? (
         <div className="py-16 text-center text-ink-muted bg-surface rounded-card border border-line">

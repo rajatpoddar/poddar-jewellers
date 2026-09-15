@@ -43,7 +43,7 @@ export default async function ProductDetailPage({ params }: Props) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 md:grid-cols-2 gap-12">
-      <ProductGallery images={product.images} name={product.name} />
+      <ProductGallery images={product.images} name={product.name} categorySlug={product.category?.slug} />
 
       <div className="space-y-6">
         <div>

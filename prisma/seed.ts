@@ -81,24 +81,27 @@ async function main() {
 
   // ── Categories ──────────────────────────────────────────────────────────
   const categorySeed = [
-    { slug: 'necklaces', name: 'Necklaces', children: [{ slug: 'chokers', name: 'Chokers' }, { slug: 'chains', name: 'Chains' }] },
-    { slug: 'rings', name: 'Rings', children: [] },
-    { slug: 'earrings', name: 'Earrings', children: [] },
-    { slug: 'bangles', name: 'Bangles', children: [] },
-    { slug: 'payal', name: 'Payal', children: [] },
-    { slug: 'mangalsutra', name: 'Mangalsutra', children: [] },
+    { slug: 'necklaces', name: 'Necklaces & Rani Haar', children: [{ slug: 'chokers', name: 'Chokers' }, { slug: 'chains', name: 'Chains' }] },
+    { slug: 'earrings', name: 'Earrings & Jhumka', children: [] },
+    { slug: 'bangles', name: 'Bangles & Kangan', children: [] },
+    { slug: 'bridal', name: 'Bridal Collection', children: [] },
+    { slug: 'rings', name: 'Rings & Angoothi', children: [] },
+    { slug: 'payal', name: 'Payal & Anklets', children: [] },
+    { slug: 'mangalsutra', name: 'Mangalsutra & Tanmaniya', children: [] },
+    { slug: 'pendants', name: 'Lockets & Pendants', children: [] },
+    { slug: 'coins', name: 'Gold & Silver Coins', children: [] },
   ];
 
   for (const [i, c] of categorySeed.entries()) {
     const parent = await db.category.upsert({
       where: { shopId_slug: { shopId: shop.id, slug: c.slug } },
-      update: {},
+      update: { name: c.name },
       create: { shopId: shop.id, slug: c.slug, name: c.name, sortOrder: i },
     });
     for (const [j, child] of c.children.entries()) {
       await db.category.upsert({
         where: { shopId_slug: { shopId: shop.id, slug: child.slug } },
-        update: {},
+        update: { name: child.name },
         create: { shopId: shop.id, slug: child.slug, name: child.name, parentId: parent.id, sortOrder: j },
       });
     }
@@ -154,32 +157,135 @@ async function main() {
 
   const samples = [
     {
-      slug: 'traditional-payal', name: 'Traditional Payal',
+      slug: 'royal-gold-necklace', name: 'Royal Gold Rani Haar',
+      metalKey: 'GOLD_22K', category: 'necklaces',
+      stoneValuePaise: 0, stoneDescription: null,
+      weightsMg: [25000, 32000, 45000],
+      attributeKeys: ['METAL:gold', 'OCCASION:wedding', 'GENDER:women', 'STYLE:traditional'],
+      images: [
+        { basePath: '/images/gold-necklaces.png', alt: 'Royal Gold Rani Haar Main Shot', width: 1200, height: 1200, isPrimary: true },
+        { basePath: '/images/cat-necklaces.png', alt: 'Royal Gold Rani Haar Flatlay', width: 1200, height: 1600, isPrimary: false },
+      ],
+    },
+    {
+      slug: 'royal-jadau-choker', name: 'Royal 22K Gold Jadau Choker',
+      metalKey: 'GOLD_22K', category: 'chokers',
+      stoneValuePaise: 0, stoneDescription: null,
+      weightsMg: [22000, 28000, 35000],
+      attributeKeys: ['METAL:gold', 'OCCASION:wedding', 'GENDER:women', 'STYLE:traditional'],
+      images: [
+        { basePath: '/images/cat-chokers.png', alt: 'Royal 22K Gold Jadau Choker', width: 1200, height: 1600, isPrimary: true },
+      ],
+    },
+    {
+      slug: 'handcrafted-jhumka-earrings', name: 'Handcrafted 22K Gold Jhumka',
+      metalKey: 'GOLD_22K', category: 'earrings',
+      stoneValuePaise: 0, stoneDescription: null,
+      weightsMg: [12000, 15000, 18000],
+      attributeKeys: ['METAL:gold', 'OCCASION:festive', 'GENDER:women', 'STYLE:traditional'],
+      images: [
+        { basePath: '/images/gold-earrings.png', alt: 'Handcrafted Gold Jhumka Main Shot', width: 1200, height: 1200, isPrimary: true },
+        { basePath: '/images/cat-earrings.png', alt: 'Gold Jhumka Pair', width: 1200, height: 1600, isPrimary: false },
+      ],
+    },
+    {
+      slug: 'heritage-gold-bangles', name: 'Heritage Handcrafted Gold Kangan',
+      metalKey: 'GOLD_22K', category: 'bangles',
+      stoneValuePaise: 0, stoneDescription: null,
+      weightsMg: [30000, 40000, 50000],
+      attributeKeys: ['METAL:gold', 'OCCASION:wedding', 'GENDER:women', 'STYLE:traditional'],
+      images: [
+        { basePath: '/images/gold-bangles.png', alt: 'Heritage Gold Kangan Main Shot', width: 1200, height: 1200, isPrimary: true },
+        { basePath: '/images/cat-bangles.png', alt: 'Gold Kangan Pair', width: 1200, height: 1600, isPrimary: false },
+      ],
+    },
+    {
+      slug: 'royal-bridal-set', name: 'Royal Grand Bridal Jewellery Set',
+      metalKey: 'GOLD_22K', category: 'bridal',
+      stoneValuePaise: 0, stoneDescription: null,
+      weightsMg: [65000, 85000, 110000],
+      attributeKeys: ['METAL:gold', 'OCCASION:wedding', 'GENDER:women', 'STYLE:traditional'],
+      images: [
+        { basePath: '/images/hero-bridal.png', alt: 'Royal Grand Bridal Set Model Shot', width: 1600, height: 900, isPrimary: true },
+        { basePath: '/images/cat-bridal.png', alt: 'Royal Bridal Set Flatlay', width: 1200, height: 1600, isPrimary: false },
+      ],
+    },
+    {
+      slug: 'traditional-payal', name: 'Traditional Gold Payal',
       metalKey: 'GOLD_22K', category: 'payal',
       stoneValuePaise: 0, stoneDescription: null,
       weightsMg: [20000, 23000, 25000],
       attributeKeys: ['METAL:gold', 'OCCASION:wedding', 'GENDER:women'],
+      images: [
+        { basePath: '/images/cat-payal.png', alt: 'Traditional Gold Payal', width: 1200, height: 1600, isPrimary: true },
+      ],
     },
     {
-      slug: 'silver-payal-classic', name: 'Classic Silver Payal',
+      slug: 'silver-payal-classic', name: 'Classic Silver Ghungroo Payal',
       metalKey: 'SILVER_999', category: 'payal',
       stoneValuePaise: 0, stoneDescription: null,
       weightsMg: [30000, 40000, 50000],
       attributeKeys: ['METAL:silver', 'OCCASION:daily-wear', 'GENDER:women'],
+      images: [
+        { basePath: '/images/cat-payal.png', alt: 'Classic Silver Payal', width: 1200, height: 1600, isPrimary: true },
+      ],
     },
     {
-      slug: 'solitaire-ring', name: 'Solitaire Ring',
+      slug: 'solitaire-ring', name: '18K Gold Diamond Solitaire Ring',
       metalKey: 'GOLD_18K', category: 'rings',
-      stoneValuePaise: rs(45000), stoneDescription: '0.50ct',
+      stoneValuePaise: rs(45000), stoneDescription: '0.50ct VVS-EF Diamond',
       weightsMg: [3500, 4200, 5000],
       attributeKeys: ['METAL:diamond', 'OCCASION:gifting', 'GENDER:women'],
+      images: [
+        { basePath: '/images/cat-rings.png', alt: 'Solitaire Ring Main Shot', width: 1200, height: 1600, isPrimary: true },
+      ],
+    },
+    {
+      slug: 'heritage-mangalsutra', name: '22K Gold Tanmaniya Mangalsutra',
+      metalKey: 'GOLD_22K', category: 'mangalsutra',
+      stoneValuePaise: 0, stoneDescription: null,
+      weightsMg: [10000, 14000, 18000],
+      attributeKeys: ['METAL:gold', 'OCCASION:daily-wear', 'GENDER:women'],
+      images: [
+        { basePath: '/images/cat-mangalsutra.png', alt: 'Gold Tanmaniya Mangalsutra', width: 1200, height: 1600, isPrimary: true },
+      ],
+    },
+    {
+      slug: 'filigree-gold-pendant', name: 'Filigree Gold Locket Pendant',
+      metalKey: 'GOLD_18K', category: 'pendants',
+      stoneValuePaise: 0, stoneDescription: null,
+      weightsMg: [4000, 6000, 8000],
+      attributeKeys: ['METAL:gold', 'OCCASION:gifting', 'GENDER:women'],
+      images: [
+        { basePath: '/images/cat-pendants.png', alt: 'Filigree Gold Pendant', width: 1200, height: 1600, isPrimary: true },
+      ],
+    },
+    {
+      slug: 'classic-gold-chain', name: '22K Gold Linked Chain',
+      metalKey: 'GOLD_22K', category: 'chains',
+      stoneValuePaise: 0, stoneDescription: null,
+      weightsMg: [12000, 18000, 24000],
+      attributeKeys: ['METAL:gold', 'OCCASION:daily-wear', 'GENDER:women'],
+      images: [
+        { basePath: '/images/cat-chains.png', alt: 'Classic Gold Linked Chain', width: 1200, height: 1600, isPrimary: true },
+      ],
+    },
+    {
+      slug: 'lakshmi-ganesh-coin', name: '24K Gold Lakshmi Ganesh Stamped Coin',
+      metalKey: 'GOLD_24K', category: 'coins',
+      stoneValuePaise: 0, stoneDescription: null,
+      weightsMg: [5000, 10000, 20000],
+      attributeKeys: ['METAL:gold', 'OCCASION:festive', 'GENDER:women'],
+      images: [
+        { basePath: '/images/cat-coins.png', alt: '24K Gold Stamped Coin', width: 1200, height: 1600, isPrimary: true },
+      ],
     },
   ];
 
   for (const s of samples) {
     const product = await db.product.upsert({
       where: { shopId_slug: { shopId: shop.id, slug: s.slug } },
-      update: {},
+      update: { name: s.name, stoneValuePaise: s.stoneValuePaise, stoneDescription: s.stoneDescription },
       create: {
         shopId: shop.id,
         slug: s.slug,
@@ -207,6 +313,23 @@ async function main() {
         update: {},
         create: { productId: product.id, attributeId: attributes[key] },
       });
+    }
+
+    if (s.images && s.images.length > 0) {
+      await db.productImage.deleteMany({ where: { productId: product.id } });
+      for (const [imgIdx, img] of s.images.entries()) {
+        await db.productImage.create({
+          data: {
+            productId: product.id,
+            basePath: img.basePath,
+            alt: img.alt,
+            width: img.width,
+            height: img.height,
+            sortOrder: imgIdx,
+            isPrimary: img.isPrimary,
+          },
+        });
+      }
     }
   }
 

@@ -1,7 +1,7 @@
 # Design System
 
 **Read this before writing any interface code — a screen, a component, a
-single button.** It is the UI half of what `CLAUDE.md` is to the project as a
+single button.** It is the UI half of what `AGENTS.md` is to the project as a
 whole. If something here contradicts a screen you are looking at, the screen is
 wrong.
 
@@ -37,27 +37,24 @@ Shop row (5 values)  →  brandStyle()  →  custom properties on <html>
 
 ---
 
-## Visual direction
+## Visual direction — `ui-ux-pro-max` Luxury Showcase
 
-**Editorial Grid / Magazine**, chosen over the alternatives for three reasons:
-large imagery is the point of a jewellery catalog, its performance cost is
-`none` (no blur, no gradients, no compositing — Hard Rule 6 keeps the NAS out
-of the hot path, and glassmorphism would put the customer's GPU there instead),
-and it is the direction that survives contact with a serif display face.
+**Editorial Luxury Showcase** (enhanced using `ui-ux-pro-max` design intelligence):
+Large high-resolution imagery, warm stone surfaces, crisp typography with high-end editorial tracking, hairline gold/line borders, multi-slide Hero Carousel (`HeroCarousel.tsx`), and luxury trust pillars.
 
 What that means in practice:
 
 | | |
 |---|---|
-| **Structure** | Grid-led, generous whitespace, hairline rules instead of shadows |
-| **Type** | Serif display for headings, sans for everything else. Never the reverse |
-| **Colour** | Ground, ink, one brand accent. The accent marks the primary action and nothing else |
-| **Depth** | A 1px line first. A shadow only when something genuinely floats |
-| **Radius** | Small and consistent. 4px on fields, 6px on cards, pill on badges |
-| **Motion** | 180ms colour transitions on interactive things. Nothing moves on its own |
+| **Structure** | Grid-led, generous whitespace, hairline rules, luxury card aspect containers |
+| **Type** | High-end serif display for headings (Instrument Serif / Cormorant), sans for body (Karla / Montserrat). Never the reverse |
+| **Colour** | Ground (`bg-ground`), warm surface (`bg-surface`), ink, one brand gold accent (`bg-brand`). The accent marks primary actions & trust highlights |
+| **Depth** | Hairline borders (`border-line`) first. Elevation shadows (`shadow-card`) on floating cards and modal drawers |
+| **Radius** | Small and consistent: `rounded-field` (4px), `rounded-card` (8px), `rounded-pill` for badges |
+| **Motion** | 180ms colour transitions on interactive elements. 6s auto-slide for `HeroCarousel` |
+| **AI Imagery** | AI prompts documented in `COMPLETE_IMAGE_PROMPTS.md` and `docs/AI-IMAGERY.md` |
 
-Explicitly rejected: glassmorphism and heavy blur, vibrant block colour,
-playful palettes, gradient buttons, drop shadows used as decoration.
+Explicitly rejected: stock Tailwind palette colors, hardcoded hex values in screens, raw `<img>` tags, emojis as structural icons.
 
 ---
 
@@ -108,126 +105,20 @@ with one odd button.
 | `font-display` `font-body` | The two faces |
 | `.numeric` | Tabular figures. **Every rupee amount, weight and rate** |
 
-### Adding a token
-
-Only when a genuinely new *meaning* appears — not a new shade. Add it to the
-`@theme inline` block, derive it from a brand input with `color-mix` if it is
-not a status colour, and add a row to the table above.
-
-`@theme inline` is load-bearing: `inline` is what makes Tailwind emit
-`var(--color-ink)` into each utility instead of copying today's hex in at build
-time. Without it, one build could not serve a second shop's colours.
-
----
-
-## Typography
-
-| | |
-|---|---|
-| Display | `--brand-font-display`, applied by the base layer to `h1`–`h3` only |
-| Body | `--brand-font-body`, 16px minimum, `line-height: 1.5`+ |
-| Numerals | `.numeric` — tabular figures wherever digits are compared or stacked |
-
-The display face is for headings. It is never used for body copy, form labels
-or button text: a shopkeeper reads this on a phone in daylight, and a
-high-contrast serif at 14px is not readable there.
-
-Fonts come from `next/font/google` through the registry in `src/lib/branding.ts`
-(see [D15](DECISIONS.md)). `Shop.fontDisplay` picks a name **from that registry**,
-which is why the settings screen offers a dropdown and not a text box.
-
-Currently registered — display: Instrument Serif, Cormorant, Playfair Display.
-Body: Karla, Inter, Montserrat. Adding one for a new customer is one entry plus
-one build, never a code branch.
-
 ---
 
 ## Components
 
 `src/components/ui/` is the whole vocabulary. **Do not write a bare `<button>`
-or `<input>` in a screen.** If a screen needs something this list does not have,
-add it here first.
+or `<input>` in a screen.**
 
 | Component | Use |
 |---|---|
-| `Button` / `ButtonLink` | `intent`: `primary` · `secondary` · `quiet` · `danger`. `size`: `md` (44px) · `lg` (52px) |
+| `Button` / `ButtonLink` | `intent`: `primary` · `secondary` · `quiet` · `danger`. `size`: `md` · `lg` |
 | `Field` | Visible label, control, hint, error — in that order |
 | `Input` `Textarea` `Select` `Checkbox` | Form controls. `numeric` on `Input` for digits |
 | `Card` `CardFieldset` `RowList` `EmptyState` | Containers. `CardFieldset` uses a real `<legend>` |
-| `PageHeader` | Every screen opens with one: title, one sentence, primary action |
-| `BackLink` | Every detail screen carries one |
+| `PageHeader` | Every screen opens with one |
 | `Notice` | Page-level message. `tone`: `info` · `warn` · `danger` · `good` |
-| `Badge` | A state label — LIVE, DRAFT, band |
-| `icons.tsx` | Inline 24px stroke SVGs. No icon library, no emoji |
-
-**`intent` is meaning, not appearance.** A screen asks for `danger` because the
-action destroys something; the design system decides danger is red. That is what
-stops the seventh shade of brown.
-
----
-
-## Rules that are not negotiable
-
-**Accessibility**
-
-1. The focus ring is styled, never removed. The base layer sets it on
-   `:focus-visible` for the whole document.
-2. Text contrast ≥ 4.5:1. The seeded palette was measured: `#8F621A` is 5.34:1
-   on white and 4.85:1 on the ground. **A shop that picks a new primary must be
-   re-checked** — the token layer keeps it coherent, not necessarily legible.
-3. Colour is never the only signal. `Notice` pairs every tone with an icon.
-4. An icon-only control carries an `aria-label`. A decorative icon carries
-   `aria-hidden` — `icons.tsx` does this for you.
-5. Labels are visible and above the control. A placeholder is not a label.
-6. Errors sit next to the field they belong to, not in a summary at the top.
-
-**Touch and interaction**
-
-7. Every target is at least 44×44px. All `Button` sizes and all form controls
-   already clear it; anything hand-rolled must too.
-8. Interactive elements get `cursor-pointer` and a hover state.
-9. State changes are never instant and never slow: the 180ms default from
-   `--default-transition-duration`. A bare `transition-colors` is already right.
-10. `prefers-reduced-motion` is honoured globally by the base layer.
-
-**Layout**
-
-11. Mobile first. Verify at 375 / 768 / 1024 / 1440.
-12. No horizontal scroll on the page. A wide table or tab strip scrolls inside
-    its own container.
-13. Images go through `next/image` with explicit dimensions. Never a raw `<img>` —
-    it ships an unoptimised file and shifts the layout as it loads.
-
-**Next.js**
-
-14. Client components are leaves. A page is a server component; the interactive
-    part inside it is `'use client'`. `Nav` / `NavLinks` is the pattern.
-15. Data that only decides markup is fetched on the server and passed as props —
-    see how `SettingsForm` receives the font list.
-
----
-
-## Admin-specific
-
-The admin is going to a non-technical user. Two rules on top of everything above:
-
-- **Destructive never resembles safe.** Delete is `intent="danger"` with a
-  trash icon, positioned away from Save. Reversible actions (deactivating a
-  metal type) are `quiet` or `secondary`, never red.
-- **Errors are readable sentences in Hinglish**, in a `Notice`, never a stack
-  trace. That is Hard Rule 4 and it is a UI rule as much as a server one.
-
----
-
-## Before calling a screen done
-
-- [ ] No stock palette class, no literal hex — `npm test` proves it
-- [ ] Every colour, radius and shadow is a token
-- [ ] Rupees, weights and rates carry `.numeric`
-- [ ] Labels visible; errors beside their field
-- [ ] Focus visible on every interactive element; tab order is sane
-- [ ] Touch targets ≥ 44px
-- [ ] 375px: nothing clipped, nothing scrolling sideways
-- [ ] Empty state written — what the shop sees before adding anything
-- [ ] Pending state written — what the button says mid-save
-- [ ] No emoji; icons are SVG and labelled or hidden
+| `Badge` | A state label — LIVE, DRAFT |
+| `icons.tsx` | Inline 24px stroke SVGs |
