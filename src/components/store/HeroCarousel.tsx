@@ -1,6 +1,4 @@
-'use client';
-
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import { ButtonLink } from '@/components/ui/Button';
 
@@ -75,8 +73,11 @@ export function HeroCarousel({
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+  const touchStartRef = useRef<number | null>(null);
+  const touchStartPosYRef = useRef<number | null>(null);
+  const touchEndRef = useRef<number | null>(null);
+  const touchEndPosYRef = useRef<number | null>(null);
 
   const nextSlide = useCallback(() => {
     setCurrentIndex((prev) => (prev + 1) % slides.length);
@@ -86,26 +87,30 @@ export function HeroCarousel({
     setCurrentIndex((prev) => (prev - 1 + slides.length) % slides.length);
   }, [slides.length]);
 
-  const minSwipeDistance = 40;
-
   const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientX);
-    setIsPaused(true);
+    touchStartRef.current = e.targetTouches[0].clientX;
+    touchStartPosYRef.current = e.targetTouches[0].clientY;
+    touchEndRef.current = null;
+    touchEndPosYRef.current = null;
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
+    touchEndRef.current = e.targetTouches[0].clientX;
+    touchEndPosYRef.current = e.targetTouches[0].clientY;
   };
 
   const handleTouchEnd = () => {
-    setIsPaused(false);
-    if (!touchStart || !touchEnd) return;
-    const distance = touchStart - touchEnd;
-    if (distance > minSwipeDistance) {
-      nextSlide();
-    } else if (distance < -minSwipeDistance) {
-      prevSlide();
+    if (touchStartRef.current === null || touchEndRef.current === null) return;
+    const deltaX = touchStartRef.current - touchEndRef.current;
+    const deltaY = (touchStartPosYRef.current || 0) - (touchEndPosYRef.current || 0);
+
+    // Trigger swipe if horizontal drag > 40px and dominant over vertical scroll
+    if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
+      if (deltaX > 0) {
+        nextSlide();
+      } else {
+        prevSlide();
+      }
     }
   };
 
@@ -121,7 +126,7 @@ export function HeroCarousel({
 
   return (
     <section
-      className="relative bg-surface-sunk border-b border-line overflow-hidden group min-h-[480px] md:min-h-[560px] flex items-center select-none"
+      className="relative bg-surface-sunk border-b border-line overflow-hidden group min-h-[480px] md:min-h-[560px] flex items-center touch-pan-y"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       onTouchStart={handleTouchStart}

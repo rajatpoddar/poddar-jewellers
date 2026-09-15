@@ -112,16 +112,19 @@ export function WeightSelector({
           <label className="text-sm font-medium text-ink block mb-2">Weight Select Karein:</label>
           <div className="flex flex-wrap gap-2">
             {weights.map((w) => {
-              const isSelected = selectedWeight?.id === w.id;
+              const currentMg = getMg(w);
+              const isSelected = Boolean(
+                selectedWeight && (selectedWeight.id === w.id || getMg(selectedWeight) === currentMg)
+              );
               const grams = getGrams(w);
               return (
                 <button
-                  key={w.id}
+                  key={w.id || `w-${currentMg}`}
                   type="button"
                   onClick={() => setSelectedWeight(w)}
-                  className={`px-4 py-2 text-sm font-medium rounded-field border transition-colors cursor-pointer ${
+                  className={`px-4 py-2.5 text-sm font-medium rounded-field border transition-all cursor-pointer touch-manipulation min-h-[44px] min-w-[72px] flex items-center justify-center active:scale-95 ${
                     isSelected
-                      ? 'border-brand bg-brand-soft text-brand font-semibold'
+                      ? 'border-brand bg-brand-soft text-brand font-semibold ring-1 ring-brand'
                       : 'border-line bg-surface text-ink hover:border-line-strong'
                   }`}
                 >

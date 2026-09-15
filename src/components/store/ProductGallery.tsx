@@ -77,7 +77,7 @@ export function ProductGallery({ images, name, categorySlug }: { images: Product
               key={img.id}
               type="button"
               onClick={() => setActiveImage(img)}
-              className={`relative w-20 h-20 rounded-field overflow-hidden border transition-colors shrink-0 cursor-pointer ${
+              className={`relative w-20 h-20 rounded-field overflow-hidden border transition-all shrink-0 cursor-pointer touch-manipulation active:scale-95 ${
                 img.id === activeImage.id ? 'border-brand ring-2 ring-brand' : 'border-line'
               }`}
             >
