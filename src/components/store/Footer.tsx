@@ -19,7 +19,16 @@ export function Footer({
         <div>
           <h4 className="font-medium text-ink mb-2">Timing & Contact</h4>
           <p>Hours: {openingHoursText}</p>
-          <p>Phone: {shop.phone}</p>
+          <p suppressHydrationWarning>
+            Phone:{' '}
+            {shop.phone ? (
+              <a href={`tel:${shop.phone.replace(/[^0-9+]/g, '')}`} className="hover:text-brand transition-colors">
+                {shop.phone}
+              </a>
+            ) : (
+              'N/A'
+            )}
+          </p>
         </div>
         <div>
           <h4 className="font-medium text-ink mb-2">Disclaimer</h4>

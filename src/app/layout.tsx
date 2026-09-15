@@ -14,6 +14,9 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: { default: shop.name, template: `%s · ${shop.name}` },
     description: shop.tagline ?? undefined,
+    formatDetection: {
+      telephone: false,
+    },
   };
 }
 
