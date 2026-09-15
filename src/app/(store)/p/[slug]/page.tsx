@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { db } from '@/lib/db';
 import { getShop, getPricingConfig } from '@/lib/shop';
 import { getLatestRateSet } from '@/lib/rates.server';
+import { getCurrentCustomer } from '@/lib/auth/customer-session';
 import { ProductGallery } from '@/components/store/ProductGallery';
 import { WeightSelector } from '@/components/store/WeightSelector';
 import { resolveMakingPercent } from '@/lib/pricing/making';
@@ -15,6 +16,7 @@ export default async function ProductDetailPage({ params }: Props) {
   const shop = await getShop();
   const pricingConfig = await getPricingConfig();
   const latestRateSet = await getLatestRateSet();
+  const customer = await getCurrentCustomer();
 
   const product = await db.product.findFirst({
     where: { shopId: shop.id, slug, status: 'LIVE' },
@@ -73,6 +75,7 @@ export default async function ProductDetailPage({ params }: Props) {
           stoneValuePaise={product.stoneValuePaise}
           gstPercentBp={pricingConfig.gstPercentBp}
           rounding={pricingConfig.rounding}
+          initialCustomer={customer ? { name: customer.name || '', phone: customer.phone } : null}
           whatsappNumber={shop.whatsapp || ''}
         />
       </div>

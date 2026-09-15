@@ -31,6 +31,7 @@ type Props = {
   stoneValuePaise: number;
   gstPercentBp: number;
   rounding?: RoundingConfig;
+  initialCustomer?: { name: string; phone: string } | null;
   whatsappNumber: string;
 };
 
@@ -66,6 +67,7 @@ export function WeightSelector({
   stoneValuePaise,
   gstPercentBp,
   rounding = DEFAULT_ROUNDING,
+  initialCustomer,
   whatsappNumber,
 }: Props) {
   const [selectedWeight, setSelectedWeight] = useState<ProductWeight | null>(weights[0] || null);
@@ -185,6 +187,7 @@ export function WeightSelector({
           weightMg={selectedWeightMg}
           weightGrams={selectedWeightGrams}
           formattedPrice={formattedPrice}
+          initialCustomer={initialCustomer}
         />
       )}
     </div>
