@@ -11,6 +11,7 @@ import {
   ProductIcon,
   RateIcon,
   SettingsIcon,
+  UserIcon,
 } from '@/components/ui/icons';
 
 /**
@@ -21,6 +22,7 @@ import {
 const LINKS: Array<{ href: string; label: string; icon: ReactNode }> = [
   { href: '/admin', label: 'Aaj ka Rate', icon: <RateIcon /> },
   { href: '/admin/products', label: 'Products', icon: <ProductIcon /> },
+  { href: '/admin/customers', label: 'Customers', icon: <UserIcon /> },
   { href: '/admin/categories', label: 'Categories', icon: <CategoryIcon /> },
   { href: '/admin/metals', label: 'Metal types', icon: <MetalIcon /> },
   { href: '/admin/photos', label: 'Photo prompts', icon: <CameraIcon /> },
