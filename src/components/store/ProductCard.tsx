@@ -4,6 +4,7 @@ import { Product, ProductImage, Category } from '@prisma/client';
 import { Card } from '@/components/ui/Surface';
 import { formatINR } from '@/lib/money';
 import { ButtonLink } from '@/components/ui/Button';
+import { WishlistButton } from './WishlistButton';
 
 export function getPriceRangeLabel(minPaise: number | null, maxPaise: number | null): string {
   if (!minPaise) return 'Price on request';
@@ -70,6 +71,9 @@ export function ProductCard({ product }: { product: ProductWithDetails }) {
             {product.category.name}
           </span>
         )}
+        <div className="absolute top-3 right-3 bg-surface/90 backdrop-blur border border-line p-1.5 rounded-full shadow-sm">
+          <WishlistButton productId={product.id} />
+        </div>
       </Link>
       <div className="p-5 flex flex-col flex-1 justify-between space-y-4">
         <div className="space-y-1">

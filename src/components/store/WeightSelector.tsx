@@ -5,6 +5,7 @@ import type { ProductWeight } from '@prisma/client';
 import { estimate } from '@/lib/pricing/engine';
 import { formatINR } from '@/lib/money';
 import { ButtonLink } from '@/components/ui/Button';
+import { WishlistButton } from '@/components/store/WishlistButton';
 import type { RoundingConfig } from '@/lib/pricing/types';
 
 export function buildWhatsAppLink(
@@ -19,6 +20,7 @@ export function buildWhatsAppLink(
 }
 
 type Props = {
+  productId?: string;
   productName: string;
   weights: ProductWeight[];
   rates: Record<string, number>;
@@ -53,6 +55,7 @@ function getMg(w: ProductWeight): number {
 }
 
 export function WeightSelector({
+  productId,
   productName,
   weights,
   rates,
@@ -147,10 +150,17 @@ export function WeightSelector({
         </p>
       </div>
 
-      {/* WhatsApp Action Button */}
-      <ButtonLink href={waLink} intent="primary" size="lg" className="w-full justify-center">
-        WhatsApp Par Poochhein
-      </ButtonLink>
+      {/* WhatsApp & Wishlist Action Buttons */}
+      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+        <ButtonLink href={waLink} intent="primary" size="lg" className="flex-1 justify-center">
+          WhatsApp Par Poochhein
+        </ButtonLink>
+        {productId && (
+          <div className="border border-line rounded-field px-4 py-2.5 flex items-center justify-center bg-surface hover:border-line-strong transition-colors min-h-[44px]">
+            <WishlistButton productId={productId} showText />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
