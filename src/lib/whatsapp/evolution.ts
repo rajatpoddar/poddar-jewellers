@@ -1,3 +1,5 @@
+import { formatEvolutionPhone, normalizePhone } from '@/lib/phone';
+
 export interface EvolutionShopConfig {
   evolutionApiUrl: string;
   evolutionApiKey?: string | null;
@@ -10,26 +12,20 @@ export interface SendOtpResult {
   error?: string;
 }
 
+export { normalizePhone };
+
 /**
- * Sanitizes an Indian phone number into international format (91XXXXXXXXXX).
- * Strips all non-digit characters and prepends '91' for 10-digit mobile numbers.
+ * Legacy alias for formatEvolutionPhone to maintain backward compatibility.
  */
 export function sanitizeIndianPhone(phone: string): string {
-  const digits = phone.replace(/\D/g, '');
-  if (digits.length === 10) {
-    return `91${digits}`;
-  }
-  if (digits.length === 11 && digits.startsWith('0')) {
-    return `91${digits.slice(1)}`;
-  }
-  return digits;
+  return formatEvolutionPhone(phone);
 }
 
 /**
  * Builds the JSON payload for Evolution API sendText endpoint.
  */
 export function buildEvolutionPayload(phone: string, text: string) {
-  const number = sanitizeIndianPhone(phone);
+  const number = formatEvolutionPhone(phone);
   return {
     number,
     text,
@@ -45,9 +41,9 @@ export async function sendWhatsAppOtp(
   phone: string,
   otp: string
 ): Promise<SendOtpResult> {
-  const sanitized = sanitizeIndianPhone(phone);
+  const formattedPhone = formatEvolutionPhone(phone);
   const message = `Aapka OTP hai ${otp}`;
-  const payload = buildEvolutionPayload(sanitized, message);
+  const payload = buildEvolutionPayload(formattedPhone, message);
 
   try {
     const url = `${shop.evolutionApiUrl.replace(/\/$/, '')}/message/sendText/${shop.evolutionInstance}`;
@@ -69,8 +65,8 @@ export async function sendWhatsAppOtp(
     }
 
     return { success: true, fallback: false };
-  } catch (error) {
-    console.log(`[WhatsApp OTP Fallback] Phone: ${sanitized} OTP: ${otp}`);
+  } catch {
+    console.log(`[WhatsApp OTP Fallback] Phone: ${formattedPhone} OTP: ${otp}`);
     return { success: true, fallback: true };
   }
 }

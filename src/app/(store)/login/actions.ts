@@ -2,8 +2,9 @@
 
 import { db } from '@/lib/db';
 import { getShop } from '@/lib/shop';
+import { normalizePhone } from '@/lib/phone';
 import { createOtpRecord, verifyOtpCode } from '@/lib/auth/otp';
-import { sendWhatsAppOtp, sanitizeIndianPhone } from '@/lib/whatsapp/evolution';
+import { sendWhatsAppOtp } from '@/lib/whatsapp/evolution';
 import {
   createCustomerSessionCookie,
   syncWishlistToDatabase,
@@ -14,7 +15,7 @@ export async function requestOtpAction(
   phone: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const cleanPhone = sanitizeIndianPhone(phone);
+    const cleanPhone = normalizePhone(phone);
     if (!cleanPhone || cleanPhone.length < 10) {
       return { success: false, error: 'Kripya 10-digit mobile number enter karein.' };
     }
@@ -43,7 +44,7 @@ export async function verifyOtpAction(
   wishlistProductIds: string[] = []
 ): Promise<{ success: boolean; isNew?: boolean; error?: string }> {
   try {
-    const cleanPhone = sanitizeIndianPhone(phone);
+    const cleanPhone = normalizePhone(phone);
     const shop = await getShop();
 
     const verifyResult = await verifyOtpCode(shop.id, cleanPhone, otp);
@@ -80,7 +81,7 @@ export async function completeCustomerRegistrationAction(
   wishlistProductIds: string[] = []
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const cleanPhone = sanitizeIndianPhone(phone);
+    const cleanPhone = normalizePhone(phone);
     const shop = await getShop();
 
     if (!name || name.trim().length === 0) {

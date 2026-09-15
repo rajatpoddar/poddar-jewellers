@@ -2,7 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { getShop } from '@/lib/shop';
-import { parseDiaryContacts, importDiaryContacts } from '@/lib/crm/import';
+import { parseDiaryContacts } from '@/lib/crm/import';
+import { importDiaryContacts } from '@/lib/crm/import.server';
 
 export async function importContactsAction(rawText: string) {
   try {

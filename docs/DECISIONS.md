@@ -362,3 +362,43 @@ Two key UX/Design decisions were made during storefront implementation:
    Upgraded the storefront from a basic catalog grid to an immersive high-end luxury showcase using `ui-ux-pro-max` design intelligence. Added an interactive 3-slide `HeroCarousel` (Royal Heritage, Bridal Masterpieces, Showroom Craftsmanship), luxury trust pillars ("The Poddar Promise"), magazine-style category tiles with gradient overlays, and AI-generated luxury imagery mapped from `public/images/`.
 
 All 124 unit tests, `design-system.test.ts` (zero hex/palette/emoji violations) and `no-hardcoded-shop.test.ts` pass cleanly. Prompts documented in `COMPLETE_IMAGE_PROMPTS.md`.
+
+---
+
+### D18 — Storefront Wishlist (/wishlist) & Product Search (/search)
+**2026-09-16**
+
+Completed the final remaining Phase 1 storefront features:
+
+1. **Browser-local Wishlist (`/wishlist`)**:
+   Stored in client-side `localStorage` with window event broadcasting (`wishlist-updated`). Includes heart toggle button on `ProductCard` and PDP (`/p/[slug]`), dynamic counter badge in the main header (`WishlistHeaderBadge`), grid view of saved items, and luxury empty state. Prepares seamless migration to customer account in Phase 2.
+
+2. **Product Search (`/search`)**:
+   Live client/server search filtering by product name, category, or metal purity. Includes category filter dropdown, price/newest sorting, URL parameter sync (`?q=...&category=...&sort=...`), and reset state.
+
+3. **Rule Enforcement**:
+   All 135 unit tests pass across 21 test files. `no-hardcoded-shop.test.ts` enforced shop-agnostic metadata (`generateMetadata()` with `getShop()`) and `design-system.test.ts` verified zero un-tokenized Tailwind palette classes or literal hexes. Production build (`npm run build`) succeeded with 0 errors.
+
+---
+
+### D19 — Phase 2 Customer Accounts, CRM Intelligence, WhatsApp Auth & A4 Luxury GST Invoicing
+**2026-09-16**
+
+Built and verified the complete Phase 2 subsystem:
+
+1. **Evolution API WhatsApp Transactional OTP Engine**:
+   Integrated Evolution API (`NregaBot` instance at `http://192.168.29.101:8087`) for sending 6-digit WhatsApp OTPs. Implemented rate-limiting (max 3 attempts, 5-min expiry) and console log fallback for dev environments.
+
+2. **Customer Auth & Onboarding Flow**:
+   Phone-based auth (`AuthModal.tsx`). Auto-login for pre-imported diary contacts after OTP verification; clean Name & Address modal for new customers. Seamlessly migrates browser `localStorage` wishlist items to database `WishlistItem` table upon login.
+
+3. **Dairy Bulk Contact Import & CRM Activity Intelligence (`/admin/customers`)**:
+   Bulk import parser (`/admin/customers/import`) for pasting or uploading 100+ offline diary contacts (`Name, Phone, Address, City, Pincode`). Real-time activity tracking engine (`CustomerActivity`) logs product views, wishlist additions, and searches silently in background. Customer profile view (`/admin/customers/[id]`) presents activity timeline and 1-tap personalized WhatsApp outreach button.
+
+4. **Order Booking & A4 Luxury Printable Color GST Invoice (`/admin/orders/[id]/invoice`)**:
+   Order booking modal (`BookOrderModal.tsx`) with target date (*"Required-By Date"*). Server calculates immutable itemized price snapshot using `estimate()`. Admin dashboard (`/admin/orders`) controls order status (`PENDING` → `CONFIRMED` → `READY` → `COMPLETED`). A4 Luxury GST Invoice formatted for `@media print` with double gold accent border, shop logo, HSN 7113 breakdown, 3% GST (1.5% CGST + 1.5% SGST), bank details, and signatory stamp.
+
+5. **Integrity & Verification**:
+   152 unit tests pass across 27 test files. `tsc --noEmit` clean. `npm run build` production build succeeds.
+
+

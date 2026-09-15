@@ -63,6 +63,7 @@ export default async function ProductDetailPage({ params }: Props) {
         )}
 
         <WeightSelector
+          productId={product.id}
           productName={product.name}
           weights={product.weights}
           rates={rateMap}

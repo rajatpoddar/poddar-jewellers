@@ -26,3 +26,17 @@ export async function getHomepageData() {
 
   return { shop, categories, featuredProducts };
 }
+
+export async function getAllLiveProducts() {
+  const shop = await getShop();
+  return db.product.findMany({
+    where: { shopId: shop.id, status: 'LIVE' },
+    include: {
+      images: { orderBy: { sortOrder: 'asc' } },
+      weights: { orderBy: { sortOrder: 'asc' } },
+      category: true,
+      metalType: true,
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+}
