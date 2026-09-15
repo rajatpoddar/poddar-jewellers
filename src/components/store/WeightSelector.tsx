@@ -4,8 +4,9 @@ import { useState } from 'react';
 import type { ProductWeight } from '@prisma/client';
 import { estimate } from '@/lib/pricing/engine';
 import { formatINR } from '@/lib/money';
-import { ButtonLink } from '@/components/ui/Button';
+import { Button, ButtonLink } from '@/components/ui/Button';
 import { WishlistButton } from '@/components/store/WishlistButton';
+import { BookOrderModal } from '@/components/store/BookOrderModal';
 import type { RoundingConfig } from '@/lib/pricing/types';
 
 export function buildWhatsAppLink(
@@ -68,6 +69,8 @@ export function WeightSelector({
   whatsappNumber,
 }: Props) {
   const [selectedWeight, setSelectedWeight] = useState<ProductWeight | null>(weights[0] || null);
+
+  const [isBookModalOpen, setIsBookModalOpen] = useState(false);
 
   const resolvedMakingBp =
     explicitBp ??
@@ -150,9 +153,20 @@ export function WeightSelector({
         </p>
       </div>
 
-      {/* WhatsApp & Wishlist Action Buttons */}
+      {/* WhatsApp, Book & Wishlist Action Buttons */}
       <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-        <ButtonLink href={waLink} intent="primary" size="lg" className="flex-1 justify-center">
+        {productId && selectedWeight && (
+          <Button
+            type="button"
+            intent="primary"
+            size="lg"
+            className="flex-1 justify-center"
+            onClick={() => setIsBookModalOpen(true)}
+          >
+            Book / Reserve Design
+          </Button>
+        )}
+        <ButtonLink href={waLink} intent="secondary" size="lg" className="flex-1 justify-center">
           WhatsApp Par Poochhein
         </ButtonLink>
         {productId && (
@@ -161,6 +175,18 @@ export function WeightSelector({
           </div>
         )}
       </div>
+
+      {productId && selectedWeight && (
+        <BookOrderModal
+          isOpen={isBookModalOpen}
+          onClose={() => setIsBookModalOpen(false)}
+          productId={productId}
+          productName={productName}
+          weightMg={selectedWeightMg}
+          weightGrams={selectedWeightGrams}
+          formattedPrice={formattedPrice}
+        />
+      )}
     </div>
   );
 }
