@@ -206,6 +206,7 @@ export async function getOrderById(orderId: string) {
           product: {
             include: {
               metalType: true,
+              images: { orderBy: { sortOrder: 'asc' }, take: 1 },
             },
           },
         },

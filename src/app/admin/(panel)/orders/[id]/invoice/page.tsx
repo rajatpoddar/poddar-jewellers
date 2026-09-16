@@ -159,12 +159,30 @@ export default async function InvoicePage({ params }: Props) {
                 {items.map((item, idx) => {
                   const itemMetalPaise = Math.round(item.weightGrams * item.metalRatePaise);
                   const makingAmountPaise = Math.round((itemMetalPaise * item.makingPercentBp) / 10000);
+                  const firstImg = item.product?.images?.[0];
+                  const imgSrc = firstImg
+                    ? (firstImg.basePath.startsWith('/') || firstImg.basePath.startsWith('http')
+                        ? firstImg.basePath
+                        : `/uploads/${firstImg.basePath}-400.webp`)
+                    : null;
 
                   return (
                     <tr key={item.id} className="border-b border-line">
                       <td className="p-2.5 border-r border-line numeric">{idx + 1}</td>
                       <td className="p-2.5 border-r border-line font-medium text-ink">
-                        {item.productName}
+                        <div className="flex items-center gap-3">
+                          {imgSrc && (
+                            <div className="w-10 h-10 relative flex-shrink-0 rounded-field overflow-hidden border border-line bg-surface-sunk">
+                              <Image
+                                src={imgSrc}
+                                alt={item.productName}
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
+                          )}
+                          <span>{item.productName}</span>
+                        </div>
                       </td>
                       <td className="p-2.5 border-r border-line text-center numeric">7113</td>
                       <td className="p-2.5 border-r border-line text-right numeric font-medium">
