@@ -99,12 +99,19 @@ existing tunnel. That keeps DNS, caching and the tunnel in one place.
 
 Phase boundaries and estimates are in the spec, Section 12. Summary:
 
-1. **Catalog + price engine** ← current
-2. Accounts, wishlist sync, orders, invoicing
-3. CRM: diary contact import, segments, opt-in capture
-4. WhatsApp: transactional + marketing, kept separate
-5. Campaign engine: festivals, offers, scheduling
-6. AI agent, only if Phases 4-5 prove the need
+1. **Catalog + price engine** ✓ (Complete)
+2. **Accounts, wishlist sync, orders, invoicing** ✓ (Complete)
+3. **CRM: diary contact import, segments, opt-in capture** ✓ (Complete)
+4. **WhatsApp: transactional + marketing, kept separate** ✓ (Complete)
+5. **Campaign engine: festivals, offers, scheduling** ✓ (Complete)
+6. **New Scope & Hermes Integration (Active Roadmap)**:
+   - **Storefront Navigation Catalogue Dropdown**: Interactive dropdown menu in Header for top-level & sub-category navigation.
+   - **Admin AI Copywriter / Text Enhancer Helper**: Contextual AI assistant button ("🪄 Polish / Rewrite with AI") across Admin input fields (Hero titles, campaign promos, WhatsApp templates, descriptions).
+   - **Hermes Agent Admin API & Automation Integration**: Admin API keys & agent endpoints allowing the owner's Hermes Agent to:
+     - Update daily Gold & Silver metal rates programmatically.
+     - Retrieve sales, orders, and customer engagement reporting.
+     - Analyze wishlist-added items without orders (abandoned interest detection).
+     - Draft & dispatch targeted WhatsApp outreach messages to specific customer segments on command.
 
 ---
 

@@ -72,7 +72,14 @@ Two of those tests enforce rules rather than behaviour:
 
 ## Next
 
-1. Production Launch Setup (Domain purchase `poddarjewellers.in`, NAS Docker stack deployment via Cloudflare Tunnel).
+1. **Storefront Catalogue Navigation Dropdown**: Add interactive mega-menu / category dropdown in Header.
+2. **Admin AI Copywriter / Text Enhancer**: Contextual AI assistant button ("🪄 Rewrite / Polish with AI") across Admin input fields.
+3. **Hermes Agent Admin API & Automation Suite**:
+   - Agent API endpoints / API key authentication.
+   - Daily rate update API endpoint for Hermes agent.
+   - Sales & customer engagement reporting endpoint.
+   - Wishlist-no-order detection & targeted WhatsApp message drafting endpoint.
+4. Production Launch Setup (Domain purchase `poddarjewellers.in`, NAS Docker stack deployment via Cloudflare Tunnel).
 
 ---
 
