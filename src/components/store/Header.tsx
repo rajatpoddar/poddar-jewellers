@@ -7,14 +7,17 @@ import type { Shop } from '@prisma/client';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { WishlistHeaderBadge } from './WishlistHeaderBadge';
 import { AuthModal } from './AuthModal';
+import { CatalogueDropdown } from './CatalogueDropdown';
 import { logoutCustomerAction } from '@/app/(store)/login/actions';
+import type { NavCategoryItem } from '@/lib/categories.server';
 
 export interface HeaderProps {
   shop: Shop & { whatsappNumber?: string };
   customer?: { name: string } | null;
+  categories?: NavCategoryItem[];
 }
 
-export function Header({ shop, customer }: HeaderProps) {
+export function Header({ shop, customer, categories = [] }: HeaderProps) {
   const router = useRouter();
   const whatsappNumber = shop.whatsappNumber || shop.whatsapp;
   const [isAuthOpen, setIsAuthOpen] = useState(false);
@@ -33,14 +36,17 @@ export function Header({ shop, customer }: HeaderProps) {
         <Link href="/" className="font-display text-2xl font-bold text-ink">
           {shop.name}
         </Link>
+
         <nav className="hidden md:flex items-center space-x-6 text-sm font-medium text-ink-muted">
           <Link href="/" className="hover:text-ink transition-colors">
             Home
           </Link>
+          <CatalogueDropdown categories={categories} />
           <Link href="/contact" className="hover:text-ink transition-colors">
             Contact
           </Link>
         </nav>
+
         <div className="flex items-center space-x-3">
           <Link
             href="/search"
