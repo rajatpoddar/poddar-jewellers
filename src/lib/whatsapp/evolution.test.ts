@@ -3,6 +3,7 @@ import {
   sanitizeIndianPhone,
   buildEvolutionPayload,
   sendWhatsAppOtp,
+  sendEvolutionApiMessage,
 } from './evolution';
 
 describe('Evolution API WhatsApp Helper', () => {
@@ -16,6 +17,71 @@ describe('Evolution API WhatsApp Helper', () => {
     expect(payload).toEqual({
       number: '919876543210',
       text: 'Aapka OTP hai 123456',
+    });
+  });
+
+  describe('sendEvolutionApiMessage', () => {
+    const mockShop = {
+      evolutionApiUrl: 'http://192.168.29.101:8087',
+      evolutionApiKey: 'test-api-key',
+      evolutionInstance: 'NregaBot',
+    };
+
+    beforeEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it('sends text message via Evolution API fetch POST', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ status: 'PENDING', key: { id: 'msg-1' } }),
+      });
+      vi.stubGlobal('fetch', mockFetch);
+
+      const result = await sendEvolutionApiMessage(mockShop, '9876543210', 'Hello World');
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual({ status: 'PENDING', key: { id: 'msg-1' } });
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://192.168.29.101:8087/message/sendText/NregaBot',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+            apikey: 'test-api-key',
+          }),
+          body: JSON.stringify({
+            number: '919876543210',
+            text: 'Hello World',
+          }),
+        })
+      );
+    });
+
+    it('throws error when Evolution API returns non-200 status', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        text: async () => 'Internal Server Error',
+      });
+      vi.stubGlobal('fetch', mockFetch);
+
+      await expect(
+        sendEvolutionApiMessage(mockShop, '9876543210', 'Hello World')
+      ).rejects.toThrow('Evolution API HTTP error 500: Internal Server Error');
+    });
+
+    it('throws error if shop config is missing url or instance', async () => {
+      await expect(
+        sendEvolutionApiMessage(
+          { evolutionApiUrl: '', evolutionInstance: '' },
+          '9876543210',
+          'Hello'
+        )
+      ).rejects.toThrow('Missing Evolution API configuration');
     });
   });
 
