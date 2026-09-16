@@ -1,6 +1,6 @@
 'use server';
 
-import { getCurrentAdmin } from '@/lib/auth.server';
+import { getCurrentAdmin } from '@/auth/session';
 import { enhanceCopy, type CopyContext } from '@/lib/ai-copywriter';
 
 export async function rewriteCopyAction(text: string, context: CopyContext) {

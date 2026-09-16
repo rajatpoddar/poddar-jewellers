@@ -43,7 +43,7 @@ export function Field({
   children,
   className,
 }: {
-  label: string;
+  label: ReactNode;
   hint?: ReactNode;
   error?: string;
   htmlFor?: string;

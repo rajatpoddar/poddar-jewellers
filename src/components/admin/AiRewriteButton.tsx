@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from '@/components/ui/Button';
+import { Button, type ButtonSize } from '@/components/ui/Button';
 import { SparklesIcon } from '@/components/ui/icons';
 import { rewriteCopyAction } from '@/app/admin/(panel)/ai-copywriter/actions';
 import type { CopyContext } from '@/lib/ai-copywriter';
@@ -10,14 +10,14 @@ export interface AiRewriteButtonProps {
   text: string;
   context: CopyContext;
   onEnhanced: (enhancedText: string) => void;
-  size?: 'sm' | 'md';
+  size?: ButtonSize;
 }
 
 export function AiRewriteButton({
   text,
   context,
   onEnhanced,
-  size = 'sm',
+  size = 'md',
 }: AiRewriteButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
 
