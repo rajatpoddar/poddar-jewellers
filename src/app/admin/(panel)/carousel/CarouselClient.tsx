@@ -7,6 +7,7 @@ import { Field, Input, Select } from '@/components/ui/Field';
 import { CardFieldset, RowList, EmptyState, PageHeader } from '@/components/ui/Surface';
 import { Notice, Badge } from '@/components/ui/Notice';
 import { PlusIcon, TrashIcon, ChevronUpIcon, ChevronDownIcon } from '@/components/ui/icons';
+import { AiRewriteButton } from '@/components/admin/AiRewriteButton';
 import {
   createHeroSlideAction,
   deleteHeroSlideAction,
@@ -46,6 +47,9 @@ export function CarouselClient({
   const [showForm, setShowForm] = useState(false);
   const [actionState, setActionState] = useState<CarouselActionState>({});
 
+  const [title, setTitle] = useState('');
+  const [subtitle, setSubtitle] = useState('');
+
   async function handleCreate(formData: FormData) {
     setActionState({});
     startTransition(async () => {
@@ -54,6 +58,8 @@ export function CarouselClient({
         setActionState({ error: res.error });
       } else {
         setActionState({ success: true });
+        setTitle('');
+        setSubtitle('');
         setShowForm(false);
       }
     });
@@ -120,12 +126,47 @@ export function CarouselClient({
             hint="Homepage carousel banner ki details Bharein."
           >
             <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="Banner Title" hint="Main title heading">
-                <Input name="title" required placeholder="Diwali Festive Gold Collection" />
+              <Field
+                label={
+                  <div className="flex items-center justify-between">
+                    <span>Banner Title</span>
+                    <AiRewriteButton
+                      text={title}
+                      context="headline"
+                      onEnhanced={(newText) => setTitle(newText)}
+                    />
+                  </div>
+                }
+                hint="Main title heading"
+              >
+                <Input
+                  name="title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  required
+                  placeholder="Diwali Festive Gold Collection"
+                />
               </Field>
 
-              <Field label="Subtitle" hint="Subheading text (optional)">
-                <Input name="subtitle" placeholder="Flat 25% Off on Making Charges" />
+              <Field
+                label={
+                  <div className="flex items-center justify-between">
+                    <span>Subtitle</span>
+                    <AiRewriteButton
+                      text={subtitle}
+                      context="subtitle"
+                      onEnhanced={(newText) => setSubtitle(newText)}
+                    />
+                  </div>
+                }
+                hint="Subheading text (optional)"
+              >
+                <Input
+                  name="subtitle"
+                  value={subtitle}
+                  onChange={(e) => setSubtitle(e.target.value)}
+                  placeholder="Flat 25% Off on Making Charges"
+                />
               </Field>
             </div>
 

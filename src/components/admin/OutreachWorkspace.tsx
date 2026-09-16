@@ -9,6 +9,7 @@ import { SendIcon, DownloadIcon, CheckIcon, PlusIcon, CloseIcon, TrashIcon } fro
 import { interpolateTemplateVariables } from '@/lib/crm-template-helpers';
 import { formatEvolutionPhone } from '@/lib/phone';
 import { downloadCustomersCSV } from '@/lib/export-csv';
+import { AiRewriteButton } from '@/components/admin/AiRewriteButton';
 import {
   saveCampaignTemplateAction,
   deleteCampaignTemplateAction,
@@ -350,7 +351,16 @@ export function OutreachWorkspace({
           </Field>
 
           <Field
-            label="Message Body (WhatsApp Text)"
+            label={
+              <div className="flex items-center justify-between">
+                <span>Message Body (WhatsApp Text)</span>
+                <AiRewriteButton
+                  text={bodyText}
+                  context="whatsapp"
+                  onEnhanced={(newText) => setBodyText(newText)}
+                />
+              </div>
+            }
             hint="Aap niche diye gaye variables par click karke message me personalize kar sakte hain."
             htmlFor={bodyFieldId}
           >

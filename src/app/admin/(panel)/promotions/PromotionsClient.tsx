@@ -6,6 +6,7 @@ import { Field, Input, Select, Checkbox } from '@/components/ui/Field';
 import { CardFieldset, RowList, EmptyState, PageHeader } from '@/components/ui/Surface';
 import { Notice, Badge } from '@/components/ui/Notice';
 import { PlusIcon, TrashIcon } from '@/components/ui/icons';
+import { AiRewriteButton } from '@/components/admin/AiRewriteButton';
 import {
   createPromotionAction,
   togglePromotionActiveAction,
@@ -50,9 +51,12 @@ export function PromotionsClient({
 }) {
   const [isPending, startTransition] = useTransition();
   const [showForm, setShowForm] = useState(false);
-  const [scope, setScope] = useState<'SHOP_WIDE' | 'CATEGORY' | 'PRODUCT'>('SHOP_WIDE');
   const [actionState, setActionState] = useState<PromotionActionState>({});
+  const [scope, setScope] = useState<'SHOP_WIDE' | 'CATEGORY' | 'PRODUCT'>('SHOP_WIDE');
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+  const [badgeText, setBadgeText] = useState('');
+  const [headline, setHeadline] = useState('');
 
   const now = new Date();
   const defaultStart = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
@@ -141,13 +145,49 @@ export function PromotionsClient({
                 <Input name="name" required placeholder="Dhanteras Special Offer" />
               </Field>
 
-              <Field label="Badge Text" hint="Product badge label (e.g. 25% OFF)">
-                <Input name="badgeText" required placeholder="DHANTERAS OFFER" />
+              <Field
+                label={
+                  <div className="flex items-center justify-between">
+                    <span>Badge Text</span>
+                    <AiRewriteButton
+                      text={badgeText}
+                      context="promo"
+                      onEnhanced={(newText) => setBadgeText(newText)}
+                    />
+                  </div>
+                }
+                hint="Product badge label (e.g. 25% OFF)"
+              >
+                <Input
+                  name="badgeText"
+                  value={badgeText}
+                  onChange={(e) => setBadgeText(e.target.value)}
+                  required
+                  placeholder="DHANTERAS OFFER"
+                />
               </Field>
             </div>
 
-            <Field label="Headline" hint="Customer-facing offer text">
-              <Input name="headline" required placeholder="Flat 25% Off on Making Charges" />
+            <Field
+              label={
+                <div className="flex items-center justify-between">
+                  <span>Headline</span>
+                  <AiRewriteButton
+                    text={headline}
+                    context="headline"
+                    onEnhanced={(newText) => setHeadline(newText)}
+                  />
+                </div>
+              }
+              hint="Customer-facing offer text"
+            >
+              <Input
+                name="headline"
+                value={headline}
+                onChange={(e) => setHeadline(e.target.value)}
+                required
+                placeholder="Flat 25% Off on Making Charges"
+              />
             </Field>
 
             <div className="grid gap-5 sm:grid-cols-2">
