@@ -5,6 +5,9 @@ export interface TemplateVariables {
   shopName?: string;
   shopPhone?: string;
   wishlistCategory?: string | null;
+  promotionName?: string | null;
+  discountText?: string | null;
+  productUrl?: string | null;
 }
 
 /**
@@ -14,6 +17,9 @@ export interface TemplateVariables {
  * - {{ShopName}} -> Shop's business name
  * - {{ShopPhone}} -> Shop's phone number
  * - {{WishlistCategory}} -> Customer's preferred/wishlisted category (defaults to "Jewellery")
+ * - {{PromotionName}} -> Active promotion/campaign name (defaults to "Special Offer")
+ * - {{DiscountText}} -> Offer/discount details (defaults to "Vishesh Chhut")
+ * - {{ProductUrl}} -> Product or category store link (defaults to empty string)
  */
 export function interpolateTemplateVariables(
   templateText: string,
@@ -31,12 +37,27 @@ export function interpolateTemplateVariables(
     vars.wishlistCategory && vars.wishlistCategory.trim() !== ''
       ? vars.wishlistCategory.trim()
       : 'Jewellery';
+  const promotionName =
+    vars.promotionName && vars.promotionName.trim() !== ''
+      ? vars.promotionName.trim()
+      : 'Special Offer';
+  const discountText =
+    vars.discountText && vars.discountText.trim() !== ''
+      ? vars.discountText.trim()
+      : 'Vishesh Chhut';
+  const productUrl =
+    vars.productUrl && vars.productUrl.trim() !== ''
+      ? vars.productUrl.trim()
+      : '';
 
   return templateText
     .replace(/\{\{\s*CustomerName\s*\}\}/gi, name)
     .replace(/\{\{\s*ShopName\s*\}\}/gi, shopName)
     .replace(/\{\{\s*ShopPhone\s*\}\}/gi, shopPhone)
-    .replace(/\{\{\s*WishlistCategory\s*\}\}/gi, category);
+    .replace(/\{\{\s*WishlistCategory\s*\}\}/gi, category)
+    .replace(/\{\{\s*PromotionName\s*\}\}/gi, promotionName)
+    .replace(/\{\{\s*DiscountText\s*\}\}/gi, discountText)
+    .replace(/\{\{\s*ProductUrl\s*\}\}/gi, productUrl);
 }
 
 export interface CustomerFilterInput {

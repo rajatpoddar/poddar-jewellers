@@ -38,6 +38,20 @@ export interface OutreachCustomer {
   }>;
 }
 
+export interface ActivePromotionItem {
+  id: string;
+  name: string;
+  headline: string;
+  badgeText: string;
+  makingDiscountPercentBp: number;
+  scope: 'SHOP_WIDE' | 'CATEGORY' | 'PRODUCT';
+  categoryId?: string | null;
+  category?: { id: string; name: string; slug: string } | null;
+  productPromotions?: Array<{
+    product: { id: string; name: string; slug: string };
+  }>;
+}
+
 export interface CampaignTemplateItem {
   id: string;
   name: string;
@@ -50,6 +64,7 @@ export interface OutreachWorkspaceProps {
   initialTemplates: CampaignTemplateItem[];
   customers: OutreachCustomer[];
   tags: Array<{ id: string; name: string }>;
+  activePromotions?: ActivePromotionItem[];
 }
 
 const VARIABLE_PILLS = [
@@ -57,6 +72,9 @@ const VARIABLE_PILLS = [
   { tag: '{{ShopName}}', label: 'Shop Name' },
   { tag: '{{ShopPhone}}', label: 'Shop Phone' },
   { tag: '{{WishlistCategory}}', label: 'Wishlist Category' },
+  { tag: '{{PromotionName}}', label: 'Campaign Name' },
+  { tag: '{{DiscountText}}', label: 'Discount Details' },
+  { tag: '{{ProductUrl}}', label: 'Offer Link' },
 ];
 
 export function OutreachWorkspace({
@@ -64,11 +82,13 @@ export function OutreachWorkspace({
   shopPhone,
   initialTemplates,
   customers,
+  activePromotions = [],
 }: OutreachWorkspaceProps) {
   const [templates, setTemplates] = useState<CampaignTemplateItem[]>(initialTemplates);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(
     initialTemplates[0]?.id || ''
   );
+  const [selectedPromotionId, setSelectedPromotionId] = useState<string>('');
   const [bodyText, setBodyText] = useState<string>(
     initialTemplates[0]?.bodyText || 'Namaste {{CustomerName}}, {{ShopName}} ki taraf se naye designs uplabdh hain!'
   );
@@ -87,6 +107,7 @@ export function OutreachWorkspace({
   const [isPending, startTransition] = useTransition();
 
   const templateSelectId = useId();
+  const promotionSelectId = useId();
   const bodyFieldId = useId();
   const previewSelectId = useId();
   const modalNameId = useId();
@@ -96,12 +117,36 @@ export function OutreachWorkspace({
   const previewCustomer =
     customers.find((c) => c.id === previewCustomerId) || customers[0] || null;
 
+  // Derive promotion variables
+  const selectedPromo = activePromotions.find((p) => p.id === selectedPromotionId);
+  const promoVars = selectedPromo
+    ? {
+        promotionName: selectedPromo.name,
+        discountText:
+          selectedPromo.headline ||
+          (selectedPromo.makingDiscountPercentBp > 0
+            ? `${selectedPromo.makingDiscountPercentBp / 100}% OFF Making Charges`
+            : selectedPromo.badgeText),
+        productUrl:
+          selectedPromo.scope === 'PRODUCT' && selectedPromo.productPromotions?.[0]?.product?.slug
+            ? `/p/${selectedPromo.productPromotions[0].product.slug}`
+            : selectedPromo.scope === 'CATEGORY' && selectedPromo.category?.slug
+            ? `/c/${selectedPromo.category.slug}`
+            : '/',
+      }
+    : {
+        promotionName: null,
+        discountText: null,
+        productUrl: null,
+      };
+
   // Compute live interpolated preview text
   const previewVariables = {
     customerName: previewCustomer?.name,
     shopName,
     shopPhone,
     wishlistCategory: previewCustomer?.wishlist?.[0]?.product?.category?.name,
+    ...promoVars,
   };
   const livePreviewText = interpolateTemplateVariables(bodyText, previewVariables);
 
@@ -186,6 +231,7 @@ export function OutreachWorkspace({
       shopName,
       shopPhone,
       wishlistCategory: customer.wishlist?.[0]?.product?.category?.name,
+      ...promoVars,
     };
     const interpolated = interpolateTemplateVariables(bodyText, customerVars);
     const normalizedPhone = formatEvolutionPhone(customer.phone) || `91${customer.phone.replace(/\D/g, '')}`;
@@ -279,6 +325,25 @@ export function OutreachWorkspace({
               {templates.map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+
+          <Field
+            label="Link Active Campaign / Promotion"
+            hint="Active campaign select karne par {{PromotionName}}, {{DiscountText}}, aur {{ProductUrl}} automatic interpolate hongen."
+            htmlFor={promotionSelectId}
+          >
+            <Select
+              id={promotionSelectId}
+              value={selectedPromotionId}
+              onChange={(e) => setSelectedPromotionId(e.target.value)}
+            >
+              <option value="">Koi Campaign Linked Nahi Hai (None)</option>
+              {activePromotions.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} ({p.badgeText || `${p.makingDiscountPercentBp / 100}% OFF`})
                 </option>
               ))}
             </Select>

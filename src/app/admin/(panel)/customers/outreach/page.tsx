@@ -8,6 +8,7 @@ import {
   getAllCustomerTags,
   getCampaignTemplates,
 } from '@/lib/crm.server';
+import { getActivePromotions } from '@/lib/promotions.server';
 import { getShop } from '@/lib/shop';
 import { normalizeFilterParams } from '@/components/admin/crm-ui-helpers';
 
@@ -32,11 +33,12 @@ export default async function OutreachPage({
     search: params.search || params.q,
   });
 
-  const [shop, templates, allTags, customers] = await Promise.all([
-    getShop(),
+  const shop = await getShop();
+  const [templates, allTags, customers, activePromotions] = await Promise.all([
     getCampaignTemplates(),
     getAllCustomerTags(),
     getFilteredCustomers(filterInput),
+    getActivePromotions(shop.id),
   ]);
 
   return (
@@ -67,6 +69,7 @@ export default async function OutreachPage({
         initialTemplates={templates}
         customers={customers}
         tags={allTags}
+        activePromotions={activePromotions}
       />
     </div>
   );

@@ -62,6 +62,22 @@ describe('CRM Template Interpolation', () => {
     );
   });
 
+  it('interpolates campaign promotion variables correctly', () => {
+    const template =
+      'Namaste {{CustomerName}}, {{ShopName}} - {{PromotionName}} ({{DiscountText}})! Link: {{ProductUrl}}';
+    const result = interpolateTemplateVariables(template, {
+      customerName: 'Sita',
+      shopName: 'Shree Jewellers',
+      promotionName: 'Dhanteras Swarna Utsav 2026',
+      discountText: '25% OFF Making Charges',
+      productUrl: '/c/gold-necklaces',
+    });
+
+    expect(result).toBe(
+      'Namaste Sita, Shree Jewellers - Dhanteras Swarna Utsav 2026 (25% OFF Making Charges)! Link: /c/gold-necklaces'
+    );
+  });
+
   it('uses fallback for missing, empty, or whitespace customer name', () => {
     const template = 'Namaste {{CustomerName}}!';
 

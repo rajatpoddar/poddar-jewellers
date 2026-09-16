@@ -73,7 +73,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     }
 
     // 2. CATEGORY scope
-    const catMatches = activePromotions.filter((p) => p.scope === 'CATEGORY' && p.categoryId === category.id);
+    const catMatches = activePromotions.filter((p) => p.scope === 'CATEGORY' && category && p.categoryId === category.id);
     if (catMatches.length > 0) {
       return catMatches.reduce((max, p) => (p.makingDiscountPercentBp > max.makingDiscountPercentBp ? p : max));
     }
