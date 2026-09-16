@@ -120,6 +120,7 @@ model Shop {
   notificationQueues NotificationQueue[]
   promotions         Promotion[]
   heroSlides         HeroSlide[]
+  apiKeys            ApiKey[]
 }
 
 /// The purities this shop deals in. Data, never an enum: another shop may carry
@@ -581,4 +582,21 @@ model HeroSlide {
 
   @@index([shopId, isActive, sortOrder])
 }
+
+model ApiKey {
+  id         String    @id @default(cuid())
+  shopId     String
+  shop       Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  name       String
+  keyPrefix  String
+  keyHash    String    @unique
+
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([shopId, keyHash])
+}
+
 

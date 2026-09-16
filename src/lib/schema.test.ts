@@ -27,4 +27,11 @@ describe('Phase 5 Schema Integrity', () => {
   });
 });
 
+describe('Hermes Agent API Suite Schema Integrity', () => {
+  it('has apiKey table configured', () => {
+    expect(db.apiKey).toBeDefined();
+  });
+});
+
+
 
