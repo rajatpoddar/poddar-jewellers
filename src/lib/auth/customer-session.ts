@@ -91,11 +91,14 @@ export async function getCurrentCustomer(): Promise<Customer | null> {
   const payload = await verifyCustomerToken(token);
   if (!payload) return null;
 
-  const customer = await db.customer.findUnique({
-    where: { id: payload.customerId },
-  });
-
-  return customer;
+  try {
+    const customer = await db.customer.findUnique({
+      where: { id: payload.customerId },
+    });
+    return customer;
+  } catch {
+    return null;
+  }
 }
 
 export async function syncWishlistToDatabase(
