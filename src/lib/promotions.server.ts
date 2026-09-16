@@ -86,21 +86,27 @@ export async function resolveProductPromotionDetails(
   productId?: string | null,
   now: Date = new Date()
 ): Promise<ResolvedPromotionDetails | null> {
-  const activePromotions = await db.promotion.findMany({
-    where: {
-      shopId,
-      isActive: true,
-      startDate: { lte: now },
-      endDate: { gte: now },
-    },
-    include: {
-      productPromotions: {
-        select: {
-          productId: true,
+  let activePromotions;
+  try {
+    activePromotions = await db.promotion.findMany({
+      where: {
+        shopId,
+        isActive: true,
+        startDate: { lte: now },
+        endDate: { gte: now },
+      },
+      include: {
+        productPromotions: {
+          select: {
+            productId: true,
+          },
         },
       },
-    },
-  });
+    });
+  } catch {
+    return null;
+  }
+
 
   if (activePromotions.length === 0) {
     return null;

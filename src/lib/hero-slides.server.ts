@@ -20,25 +20,30 @@ export interface CreateHeroSlideInput {
  * Includes linked Promotion data if attached.
  */
 export async function getActiveHeroSlides(shopId: string, now: Date = new Date()) {
-  return db.heroSlide.findMany({
-    where: {
-      shopId,
-      isActive: true,
-      AND: [
-        {
-          OR: [{ startDate: null }, { startDate: { lte: now } }],
-        },
-        {
-          OR: [{ endDate: null }, { endDate: { gte: now } }],
-        },
-      ],
-    },
-    include: {
-      promotion: true,
-    },
-    orderBy: { sortOrder: 'asc' },
-  });
+  try {
+    return await db.heroSlide.findMany({
+      where: {
+        shopId,
+        isActive: true,
+        AND: [
+          {
+            OR: [{ startDate: null }, { startDate: { lte: now } }],
+          },
+          {
+            OR: [{ endDate: null }, { endDate: { gte: now } }],
+          },
+        ],
+      },
+      include: {
+        promotion: true,
+      },
+      orderBy: { sortOrder: 'asc' },
+    });
+  } catch {
+    return [];
+  }
 }
+
 
 /**
  * Returns all hero slides for a given shop for admin management, ordered by sortOrder asc.
