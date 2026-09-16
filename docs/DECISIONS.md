@@ -401,4 +401,27 @@ Built and verified the complete Phase 2 subsystem:
 5. **Integrity & Verification**:
    152 unit tests pass across 27 test files. `tsc --noEmit` clean. `npm run build` production build succeeds.
 
+---
 
+### D20 — Phase 3 CRM Segmentation, Custom Tagging, Direct Marketing & Public Rates Removal
+**2026-09-16**
+
+Built and verified the complete Phase 3 subsystem:
+
+1. **Public Metal Rates Display Complete Removal & 301 Redirect**:
+   Owner explicit directive. Removed `/rates` page and added 301 permanent redirect from `/rates` to `/` in `src/proxy.ts`. Removed rate link from header navigation and Daily Metal Rates Strip from homepage. Storefront customers see only final computed estimated total prices (`estimate()`).
+
+2. **WhatsApp Opt-In Consent Capture Engine**:
+   Added `marketingOptIn`, `optInSource`, and `optInAt` fields to `Customer` table. Captured opt-in consent during WhatsApp OTP login (`AuthModal.tsx`) and Order Booking (`BookOrderModal.tsx`) with default-checked consent checkboxes.
+
+3. **Database Schema & Multitenancy**:
+   Created `CustomerTag` (many-to-many custom tags e.g. *VIP*, *Bridal 2026*), `CampaignTemplate` (reusable marketing message templates), and `OutreachLog` (audit log of sent messages). Every table carries `shopId` to uphold Hard Rule 8.
+
+4. **Admin Smart CRM Segmentation & Customer Tagging (`/admin/customers`)**:
+   Added live dynamic filter toolbar (`CustomerSegmentFilters.tsx`) for filtering customers by Opt-In status, Category interest, Upcoming event dates (*Required-By* next 15/30/60 days), Wishlist total (> ₹50,000), and Custom tags. Added 1-click badge tag manager (`TagBadgeSelect.tsx`) and `OutreachLog` history timeline to customer profile view (`/admin/customers/[id]`).
+
+5. **Outreach & Broadcast Hub (`/admin/customers/outreach`)**:
+   Built template selector with live variable interpolation engine (`{{CustomerName}}`, `{{WishlistCategory}}`, `{{ShopPhone}}`, `{{ProductName}}`, `{{ProductUrl}}`), 1-click `wa.me` links with background audit logging, and 1-click CSV broadcast exporter.
+
+6. **Integrity & Verification**:
+   208 unit tests pass across 33 test files. `tsc --noEmit` clean. `npm run build` production build succeeds cleanly.
