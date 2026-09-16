@@ -1,7 +1,7 @@
 # Status
 
 **Updated:** 2026-09-16  
-**Phase:** Phase 1 (Catalog, Price Engine & Storefront), Phase 2 (Customer Accounts, Wishlist Sync & Printable Invoicing), Phase 3 (CRM Segmentation, Customer Tagging, Direct Marketing & Public Rates Removal), Phase 4 (WhatsApp Automation Engine & Dual-Track Notifications), and Phase 5 (Campaign & Festive Offer Engine) complete and verified.  
+**Phase:** Phase 1 (Catalog, Price Engine & Storefront), Phase 2 (Customer Accounts, Wishlist Sync & Printable Invoicing), Phase 3 (CRM Segmentation, Customer Tagging, Direct Marketing & Public Rates Removal), Phase 4 (WhatsApp Automation Engine & Dual-Track Notifications), Phase 5 (Campaign & Festive Offer Engine), and Phase 6 (Hermes Agent Admin API & Automation Suite) complete and verified.  
 **Design system:** built and applied across all Admin, Customer Portal, and Storefront screens (D15).
 
 ---
@@ -9,17 +9,24 @@
 ## What works today
 
 Sign in at `/admin`, enter the morning's rate, press Save — the entire catalog
-re-prices itself. Products, categories, metal types, campaign promotions, hero slides and every shop setting are
-managed from there. Customers browse at `/`, view category listings, select product weight options, calculate live estimated prices (including active festive making charge discounts), search the entire catalogue at `/search`, save designs to wishlist at `/wishlist`, authenticate via WhatsApp OTP (Evolution API), book designs with target dates (*"Required-By Date"*), view their placed orders at `/orders`, receive automated WhatsApp order updates, and start conversations on WhatsApp.
+re-prices itself. Products, categories, metal types, campaign promotions, hero slides, API keys, and every shop setting are
+managed from there. Customers browse at `/`, view category listings via the Catalogue Header Dropdown, select product weight options, calculate live estimated prices (including active festive making charge discounts), search the entire catalogue at `/search`, save designs to wishlist at `/wishlist`, authenticate via WhatsApp OTP (Evolution API), book designs with target dates (*"Required-By Date"*), view their placed orders at `/orders`, receive automated WhatsApp order updates, and start conversations on WhatsApp.
 
 Public metal rates display has been completely removed from the storefront (customers see only final computed estimated total prices), and `/rates` permanently redirects to `/`.
 
 Built and verified:
 
 - **Price engine** — pure, no database or framework, supports percentage basis points making charge discounts, dual price breakdowns (`totalPaise` vs `originalTotalPaise`), exhaustively tested
-- **Schema** — metal types as rows, not an enum; `shopId` on every shop-owned table; `Promotion`, `ProductPromotion`, `HeroSlide` models added
+- **Schema** — metal types as rows, not an enum; `shopId` on every shop-owned table; `Promotion`, `ProductPromotion`, `HeroSlide`, `ApiKey` models added
 - **Shop context** — one `getShop()`, the single thing multi-tenancy would change
-- **Admin** — login, daily rate screen, metal types, categories, products, settings, diary contact import, customer CRM activity timeline, orders management, printable A4 luxury GST invoice generator, Promotions Hub (`/admin/promotions`), and Hero Carousel Manager (`/admin/carousel`)
+- **Admin** — login, daily rate screen, metal types, categories, products, settings, diary contact import, customer CRM activity timeline, orders management, printable A4 luxury GST invoice generator, Promotions Hub (`/admin/promotions`), Hero Carousel Manager (`/admin/carousel`), and API Keys Manager (`/admin/api-keys`)
+- **Phase 6 Hermes Agent Admin API Suite (`/api/agent/v1/...` & `/admin/api-keys`)**:
+  - **Secure API Key Auth**: Hashed API key authentication (`ApiKey` Prisma schema) supporting `Authorization: Bearer hermes_live_...` or `X-Hermes-API-Key` headers. Database stores SHA-256 key hash only.
+  - **Daily Metal Rates Endpoint (`POST /api/agent/v1/rates`)**: Hermes Agent submits daily Gold & Silver rates programmatically, triggering automatic catalog price cache recomputation.
+  - **Sales & Engagement Reporting Endpoint (`GET /api/agent/v1/analytics`)**: Returns orders summary, revenue in paise & formatted INR (`formatINR`), wishlist additions count, and customer category views analytics.
+  - **Wishlist Lead Detection Endpoint (`GET /api/agent/v1/leads/wishlist-no-order`)**: Returns high-intent customers who added products to wishlist but haven't placed an order yet.
+  - **Targeted WhatsApp Outreach Endpoint (`POST /api/agent/v1/outreach/send`)**: Dispatches targeted WhatsApp messages to specific customers with automatic audit logging in `OutreachLog`.
+  - **Admin API Key Manager (`/admin/api-keys`)**: Generate secret keys, 1-click secret copy box, view `lastUsedAt` usage timestamps, and revoke agent keys.
 - **Phase 5 Campaign & Festive Offer Engine (`/admin/promotions` & `/admin/carousel`)**:
   - **Dynamic Making Charge Discounts**: Configurable percentage discounts on making charges (e.g. 25% OFF Making Charges).
   - **Flexible Scoping**: Shop-wide, Category-specific, or Product-specific offer rules.
@@ -62,7 +69,7 @@ Built and verified:
 - **Deployment & Design System**:
   - Token layer driven by the `Shop` row, component vocabulary in `src/components/ui/`, every admin, customer, and storefront screen built on both.
 
-301 tests pass across 40 test files. `tsc --noEmit` clean. Production build succeeds.
+331 tests pass across 45 test files. `tsc --noEmit` clean. Production build succeeds.
 
 Two of those tests enforce rules rather than behaviour:
 - `src/lib/no-hardcoded-shop.test.ts` walks `src/` for shop-specific literals.
@@ -72,14 +79,7 @@ Two of those tests enforce rules rather than behaviour:
 
 ## Next
 
-1. **Storefront Catalogue Navigation Dropdown**: Add interactive mega-menu / category dropdown in Header.
-2. **Admin AI Copywriter / Text Enhancer**: Contextual AI assistant button ("🪄 Rewrite / Polish with AI") across Admin input fields.
-3. **Hermes Agent Admin API & Automation Suite**:
-   - Agent API endpoints / API key authentication.
-   - Daily rate update API endpoint for Hermes agent.
-   - Sales & customer engagement reporting endpoint.
-   - Wishlist-no-order detection & targeted WhatsApp message drafting endpoint.
-4. Production Launch Setup (Domain purchase `poddarjewellers.in`, NAS Docker stack deployment via Cloudflare Tunnel).
+1. Production Launch Setup (Domain purchase `poddarjewellers.in`, NAS Docker stack deployment via Cloudflare Tunnel).
 
 ---
 
