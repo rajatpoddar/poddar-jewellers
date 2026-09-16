@@ -7,11 +7,13 @@ import { cx } from '@/components/ui/cx';
 import {
   CameraIcon,
   CategoryIcon,
+  GalleryIcon,
   MetalIcon,
   OrderIcon,
   ProductIcon,
   RateIcon,
   SettingsIcon,
+  TagIcon,
   UserIcon,
 } from '@/components/ui/icons';
 
@@ -23,6 +25,8 @@ import {
 const LINKS: Array<{ href: string; label: string; icon: ReactNode }> = [
   { href: '/admin', label: 'Aaj ka Rate', icon: <RateIcon /> },
   { href: '/admin/orders', label: 'Orders', icon: <OrderIcon /> },
+  { href: '/admin/promotions', label: 'Promotions', icon: <TagIcon /> },
+  { href: '/admin/carousel', label: 'Hero Slides', icon: <GalleryIcon /> },
   { href: '/admin/products', label: 'Products', icon: <ProductIcon /> },
   { href: '/admin/customers', label: 'Customers', icon: <UserIcon /> },
   { href: '/admin/categories', label: 'Categories', icon: <CategoryIcon /> },

@@ -145,3 +145,31 @@ export const DownloadIcon = () => (
   </Svg>
 );
 
+export const ChevronUpIcon = () => (
+  <Svg>
+    <path d="m18 15-6-6-6 6" />
+  </Svg>
+);
+
+export const ChevronDownIcon = () => (
+  <Svg>
+    <path d="m6 9 6 6 6-6" />
+  </Svg>
+);
+
+export const TagIcon = () => (
+  <Svg>
+    <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l5.58-5.58c.94-.94.94-2.48 0-3.42L12 2Z" />
+    <path d="M7 7h.01" />
+  </Svg>
+);
+
+export const GalleryIcon = () => (
+  <Svg>
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+    <circle cx="8.5" cy="8.5" r="1.5" />
+    <polyline points="21 15 16 10 5 21" />
+  </Svg>
+);
+
+
