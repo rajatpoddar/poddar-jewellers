@@ -38,7 +38,24 @@ function getStatusBadge(status: string) {
 export default async function CustomerOrdersPage() {
   const customer = await getCurrentCustomer();
   if (!customer) {
-    redirect('/login?returnUrl=/orders');
+    return (
+      <div className="max-w-5xl mx-auto px-4 py-12 space-y-8">
+        <div>
+          <h1 className="font-display text-3xl md:text-4xl font-bold text-ink">Aapke Orders & Bookings</h1>
+          <p className="text-sm text-ink-muted mt-1">
+            Aapke dwaara reserve kiye gaye saare designs aur unka status
+          </p>
+        </div>
+        <EmptyState title="Sign In Required">
+          <p className="mb-4 text-ink-muted">
+            Apne booked orders aur tracking status dekhne ke liye WhatsApp se Sign In karein.
+          </p>
+          <ButtonLink href="/" intent="primary" size="lg">
+            Homepage Par Jayein →
+          </ButtonLink>
+        </EmptyState>
+      </div>
+    );
   }
 
   const orders = await getCustomerOrders(customer.id);
