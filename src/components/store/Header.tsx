@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { Shop } from '@prisma/client';
@@ -26,6 +26,17 @@ export function Header({ shop, customer, categories = [] }: HeaderProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [expandedCatId, setExpandedCatId] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMobileMenuOpen]);
+
   async function handleLogout() {
     setIsLoggingOut(true);
     await logoutCustomerAction();
@@ -39,112 +50,114 @@ export function Header({ shop, customer, categories = [] }: HeaderProps) {
   }
 
   return (
-    <header className="border-b border-line bg-surface/95 backdrop-blur-md sticky top-0 z-40 shadow-subtle">
-      <div className="mx-auto max-w-7xl px-4 py-3.5 flex items-center justify-between gap-4">
-        {/* Mobile Hamburger & Brand Logo */}
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setIsMobileMenuOpen(true)}
-            className="md:hidden p-2 -ml-2 text-ink-muted hover:text-ink transition-colors rounded-field focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-            aria-label="Open navigation menu"
-          >
-            <MenuIcon className="size-6" />
-          </button>
-
-          <Link href="/" className="font-display text-xl sm:text-2xl font-bold tracking-tight text-brand flex items-center gap-2">
-            <span>{shop.name}</span>
-          </Link>
-        </div>
-
-        {/* Desktop Main Navigation Links */}
-        <nav className="hidden md:flex items-center space-x-6 text-sm font-medium text-ink-muted">
-          <Link href="/" className="hover:text-ink transition-colors py-1">
-            Home
-          </Link>
-          <CatalogueDropdown categories={categories} />
-          <Link href="/search" className="hover:text-ink transition-colors py-1">
-            All Collections
-          </Link>
-          <Link href="/contact" className="hover:text-ink transition-colors py-1">
-            Contact Us
-          </Link>
-        </nav>
-
-        {/* Right Action Icons & Buttons */}
-        <div className="flex items-center space-x-2 sm:space-x-3">
-          <Link
-            href="/search"
-            aria-label="Search catalogue"
-            className="p-2 text-ink-muted hover:text-ink hover:bg-surface-elevated transition-colors rounded-field focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand flex items-center justify-center"
-            title="Search Catalogue"
-          >
-            <svg
-              className="w-5 h-5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.75"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+    <>
+      <header className="border-b border-line bg-surface/95 backdrop-blur-md sticky top-0 z-40 shadow-subtle">
+        <div className="mx-auto max-w-7xl px-4 py-3.5 flex items-center justify-between gap-4">
+          {/* Mobile Hamburger & Brand Logo */}
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="md:hidden min-w-[44px] min-h-[44px] p-2 -ml-2 text-ink-muted hover:text-ink transition-colors rounded-field focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand flex items-center justify-center cursor-pointer touch-manipulation select-none"
+              aria-label="Open navigation menu"
             >
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-          </Link>
+              <MenuIcon className="size-6 pointer-events-none" />
+            </button>
 
-          <WishlistHeaderBadge />
-
-          {/* Desktop User Account Actions */}
-          <div className="hidden sm:flex items-center gap-2 border-l border-line pl-3">
-            {customer ? (
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-ink">
-                  Namaste, {customer.name}
-                </span>
-                <Button
-                  intent="quiet"
-                  size="md"
-                  onClick={handleLogout}
-                  disabled={isLoggingOut}
-                >
-                  Sign Out
-                </Button>
-              </div>
-            ) : (
-              <Button
-                intent="secondary"
-                size="md"
-                onClick={() => setIsAuthOpen(true)}
-              >
-                Sign In
-              </Button>
-            )}
+            <Link href="/" className="font-display text-xl sm:text-2xl font-bold tracking-tight text-brand flex items-center gap-2">
+              <span>{shop.name}</span>
+            </Link>
           </div>
 
-          {/* WhatsApp Action Link */}
-          <ButtonLink
-            href={`https://wa.me/${whatsappNumber}`}
-            intent="secondary"
-            size="md"
-            className="hidden sm:inline-flex"
-          >
-            WhatsApp
-          </ButtonLink>
+          {/* Desktop Main Navigation Links */}
+          <nav className="hidden md:flex items-center space-x-6 text-sm font-medium text-ink-muted">
+            <Link href="/" className="hover:text-ink transition-colors py-1">
+              Home
+            </Link>
+            <CatalogueDropdown categories={categories} />
+            <Link href="/search" className="hover:text-ink transition-colors py-1">
+              All Collections
+            </Link>
+            <Link href="/contact" className="hover:text-ink transition-colors py-1">
+              Contact Us
+            </Link>
+          </nav>
+
+          {/* Right Action Icons & Buttons */}
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            <Link
+              href="/search"
+              aria-label="Search catalogue"
+              className="p-2 text-ink-muted hover:text-ink hover:bg-surface-elevated transition-colors rounded-field focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand flex items-center justify-center"
+              title="Search Catalogue"
+            >
+              <svg
+                className="w-5 h-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.75"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+            </Link>
+
+            <WishlistHeaderBadge />
+
+            {/* Desktop User Account Actions */}
+            <div className="hidden sm:flex items-center gap-2 border-l border-line pl-3">
+              {customer ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-ink">
+                    Namaste, {customer.name}
+                  </span>
+                  <Button
+                    intent="quiet"
+                    size="md"
+                    onClick={handleLogout}
+                    disabled={isLoggingOut}
+                  >
+                    Sign Out
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  intent="secondary"
+                  size="md"
+                  onClick={() => setIsAuthOpen(true)}
+                >
+                  Sign In
+                </Button>
+              )}
+            </div>
+
+            {/* WhatsApp Action Link */}
+            <ButtonLink
+              href={`https://wa.me/${whatsappNumber}`}
+              intent="secondary"
+              size="md"
+              className="hidden sm:inline-flex"
+            >
+              WhatsApp
+            </ButtonLink>
+          </div>
         </div>
-      </div>
+      </header>
 
       {/* Mobile Navigation Drawer / Sheet */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-50 md:hidden flex">
           {/* Backdrop Overlay */}
           <div
-            className="fixed inset-0 bg-ink/50 backdrop-blur-sm animate-fade-in"
+            className="fixed inset-0 bg-ink/50 backdrop-blur-sm animate-fade-in cursor-pointer"
             onClick={() => setIsMobileMenuOpen(false)}
           />
 
           {/* Slide-out Drawer Container */}
-          <div className="relative w-4/5 max-w-xs bg-surface h-full shadow-2xl flex flex-col justify-between z-10 overflow-y-auto animate-slide-in">
+          <div className="relative w-4/5 max-w-xs bg-surface h-dvh max-h-screen shadow-2xl flex flex-col justify-between z-50 overflow-y-auto animate-slide-in overscroll-contain">
             <div className="p-4 space-y-6">
               {/* Drawer Header */}
               <div className="flex items-center justify-between border-b border-line pb-4">
@@ -158,7 +171,7 @@ export function Header({ shop, customer, categories = [] }: HeaderProps) {
                 <button
                   type="button"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="p-1.5 text-ink-muted hover:text-ink rounded-field focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  className="min-w-[44px] min-h-[44px] p-2 text-ink-muted hover:text-ink rounded-field focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand flex items-center justify-center cursor-pointer touch-manipulation"
                   aria-label="Close menu"
                 >
                   <CloseIcon />
@@ -251,7 +264,7 @@ export function Header({ shop, customer, categories = [] }: HeaderProps) {
                               <button
                                 type="button"
                                 onClick={() => toggleCategory(cat.id)}
-                                className="p-1 text-ink-muted hover:text-ink focus-visible:outline-none"
+                                className="min-w-[44px] min-h-[44px] p-2 text-ink-muted hover:text-ink focus-visible:outline-none flex items-center justify-center cursor-pointer touch-manipulation"
                                 aria-label={`Toggle ${cat.name} subcategories`}
                               >
                                 {isExpanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
@@ -327,6 +340,7 @@ export function Header({ shop, customer, categories = [] }: HeaderProps) {
       )}
 
       <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
-    </header>
+    </>
   );
 }
+
