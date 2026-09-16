@@ -9,6 +9,10 @@ import { SESSION_COOKIE, verifySession } from '@/auth/session';
  * every server action, so a bypassed proxy leaks nothing.
  */
 export function proxy(request: NextRequest) {
+  if (request.nextUrl.pathname === '/rates') {
+    return NextResponse.redirect(new URL('/', request.url), 301);
+  }
+
   const token = request.cookies.get(SESSION_COOKIE)?.value;
 
   if (!token) {
@@ -26,5 +30,6 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin((?!/login).*)'],
+  matcher: ['/admin((?!/login).*)', '/rates'],
 };
+

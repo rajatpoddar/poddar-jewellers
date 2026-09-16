@@ -37,9 +37,6 @@ export function Header({ shop, customer }: HeaderProps) {
           <Link href="/" className="hover:text-ink transition-colors">
             Home
           </Link>
-          <Link href="/rates" className="hover:text-ink transition-colors">
-            Aaj ka Rate
-          </Link>
           <Link href="/contact" className="hover:text-ink transition-colors">
             Contact
           </Link>
