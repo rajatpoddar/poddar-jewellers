@@ -41,11 +41,13 @@ async function categoryChains(shopId: string) {
  * hundred rows: fast enough to run inline, with no queue and no background
  * worker to operate.
  */
-export async function recomputeAllPriceCaches(): Promise<number> {
+export async function recomputeAllPriceCaches(targetShopId?: string): Promise<number> {
   const latest = await getLatestRate();
   if (!latest) return 0;
 
-  const shop = await getShop();
+  const shop = targetShopId
+    ? (await db.shop.findUnique({ where: { id: targetShopId } })) ?? (await getShop())
+    : await getShop();
   const { gstPercentBp, defaultMakingPercentBp, rounding } = await getPricingConfig();
   const chains = await categoryChains(shop.id);
 
@@ -106,3 +108,6 @@ export async function recomputeAllPriceCaches(): Promise<number> {
 
   return updated;
 }
+
+export const recomputeProductPrices = recomputeAllPriceCaches;
+
