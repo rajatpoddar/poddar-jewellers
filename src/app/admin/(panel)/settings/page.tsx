@@ -2,6 +2,7 @@ import { getShop } from '@/lib/shop';
 import { DISPLAY_FONT_NAMES, BODY_FONT_NAMES } from '@/lib/branding';
 import { PageHeader } from '@/components/ui/Surface';
 import { SettingsForm } from './form';
+import { MetaSettingsForm } from '@/components/admin/MetaSettingsForm';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +21,13 @@ export default async function SettingsPage() {
         shop={plain}
         displayFonts={DISPLAY_FONT_NAMES}
         bodyFonts={BODY_FONT_NAMES}
+      />
+      <MetaSettingsForm
+        initialSettings={{
+          metaPhoneNumberId: shop.metaPhoneNumberId,
+          metaAccessToken: shop.metaAccessToken,
+          metaWabaId: shop.metaWabaId,
+        }}
       />
     </div>
   );
