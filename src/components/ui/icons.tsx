@@ -185,5 +185,12 @@ export const KeyIcon = ({ className }: { className?: string } = {}) => (
   </Svg>
 );
 
+export const MenuIcon = ({ className }: { className?: string } = {}) => (
+  <Svg className={className}>
+    <path d="M4 6h16M4 12h16M4 18h16" />
+  </Svg>
+);
+
+
 
 
