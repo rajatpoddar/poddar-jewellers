@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import Image from 'next/image';
 import { db } from '@/lib/db';
 import { getShop } from '@/lib/shop';
+import { getActivePromotions } from '@/lib/promotions.server';
 import { ProductCard } from '@/components/store/ProductCard';
 import { parseSlugArray } from '../slug';
 
@@ -40,6 +41,8 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     notFound();
   }
 
+  const activePromotions = await getActivePromotions(shop.id);
+
   const orderBy = sort === 'price_asc'
     ? { cachedPriceMinPaise: 'asc' as const }
     : sort === 'price_desc'
@@ -57,6 +60,32 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   });
 
   const categoryImg = getCategoryImage(category.slug);
+
+  function resolvePromoForProduct(productId: string) {
+    if (activePromotions.length === 0) return null;
+
+    // 1. PRODUCT scope
+    const prodMatches = activePromotions.filter(
+      (p) => p.scope === 'PRODUCT' && p.productPromotions.some((pp) => pp.productId === productId)
+    );
+    if (prodMatches.length > 0) {
+      return prodMatches.reduce((max, p) => (p.makingDiscountPercentBp > max.makingDiscountPercentBp ? p : max));
+    }
+
+    // 2. CATEGORY scope
+    const catMatches = activePromotions.filter((p) => p.scope === 'CATEGORY' && p.categoryId === category.id);
+    if (catMatches.length > 0) {
+      return catMatches.reduce((max, p) => (p.makingDiscountPercentBp > max.makingDiscountPercentBp ? p : max));
+    }
+
+    // 3. SHOP_WIDE scope
+    const shopMatches = activePromotions.filter((p) => p.scope === 'SHOP_WIDE');
+    if (shopMatches.length > 0) {
+      return shopMatches.reduce((max, p) => (p.makingDiscountPercentBp > max.makingDiscountPercentBp ? p : max));
+    }
+
+    return null;
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
@@ -98,9 +127,10 @@ export default async function CategoryPage({ params, searchParams }: Props) {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
+          {products.map((product) => {
+            const promo = resolvePromoForProduct(product.id);
+            return <ProductCard key={product.id} product={product} promotion={promo} />;
+          })}
         </div>
       )}
     </div>

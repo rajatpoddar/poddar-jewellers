@@ -19,6 +19,7 @@ import {
   getShopPromotions,
   getActivePromotions,
   resolveProductPromotion,
+  resolveProductPromotionDetails,
   createPromotion,
   togglePromotionActive,
   deletePromotion,
@@ -187,6 +188,40 @@ describe('promotions.server data layer', () => {
 
       expect(db.promotion.delete).toHaveBeenCalledWith({
         where: { id: 'p1' },
+      });
+    });
+  });
+
+  describe('resolveProductPromotionDetails', () => {
+    it('returns null when no active promotions exist', async () => {
+      vi.mocked(db.promotion.findMany).mockResolvedValue([]);
+
+      const details = await resolveProductPromotionDetails(shopId, 'cat_1', 'prod_1', now);
+
+      expect(details).toBeNull();
+    });
+
+    it('returns full promo details for active matched promotion', async () => {
+      const activePromos = [
+        {
+          id: 'p_dhanteras',
+          scope: 'SHOP_WIDE',
+          makingDiscountPercentBp: 2500,
+          badgeText: 'Dhanteras Special',
+          headline: '25% Off Making Charges',
+          name: 'Dhanteras Swarna Utsav',
+          productPromotions: [],
+        },
+      ];
+      vi.mocked(db.promotion.findMany).mockResolvedValue(activePromos as any);
+
+      const details = await resolveProductPromotionDetails(shopId, 'cat_1', 'prod_1', now);
+
+      expect(details).toEqual({
+        promotionDiscountBp: 2500,
+        badgeText: 'Dhanteras Special',
+        headline: '25% Off Making Charges',
+        name: 'Dhanteras Swarna Utsav',
       });
     });
   });

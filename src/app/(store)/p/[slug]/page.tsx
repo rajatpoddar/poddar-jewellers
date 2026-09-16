@@ -5,7 +5,9 @@ import { getLatestRateSet } from '@/lib/rates.server';
 import { getCurrentCustomer } from '@/lib/auth/customer-session';
 import { ProductGallery } from '@/components/store/ProductGallery';
 import { WeightSelector } from '@/components/store/WeightSelector';
+import { OfferBadge } from '@/components/store/OfferBadge';
 import { resolveMakingPercent } from '@/lib/pricing/making';
+import { resolveProductPromotionDetails } from '@/lib/promotions.server';
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -32,6 +34,12 @@ export default async function ProductDetailPage({ params }: Props) {
     notFound();
   }
 
+  const promoDetails = await resolveProductPromotionDetails(
+    shop.id,
+    product.categoryId,
+    product.id,
+  );
+
   const rateMap: Record<string, number> = {};
   latestRateSet.lines.forEach((line) => {
     rateMap[line.metalType.key] = line.pricePerGramPaise;
@@ -49,6 +57,11 @@ export default async function ProductDetailPage({ params }: Props) {
 
       <div className="space-y-6">
         <div>
+          {promoDetails && (
+            <div className="mb-3">
+              <OfferBadge badgeText={promoDetails.badgeText} headline={promoDetails.headline} />
+            </div>
+          )}
           <span className="text-xs text-ink-muted uppercase tracking-wider block font-medium">
             {product.category?.name} · {product.metalType.label}
           </span>
@@ -75,6 +88,7 @@ export default async function ProductDetailPage({ params }: Props) {
           stoneValuePaise={product.stoneValuePaise}
           gstPercentBp={pricingConfig.gstPercentBp}
           rounding={pricingConfig.rounding}
+          promotionDiscountBp={promoDetails?.promotionDiscountBp}
           initialCustomer={customer ? { name: customer.name || '', phone: customer.phone } : null}
           whatsappNumber={shop.whatsapp || ''}
         />

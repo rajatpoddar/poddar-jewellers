@@ -2,9 +2,14 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
+import type { HeroSlide, Promotion } from '@prisma/client';
 import { ButtonLink } from '@/components/ui/Button';
 
-type Slide = {
+export type HeroSlideWithPromotion = HeroSlide & {
+  promotion?: Promotion | null;
+};
+
+type DisplaySlide = {
   id: string;
   badge: string;
   heading: string;
@@ -21,14 +26,16 @@ export function HeroCarousel({
   shopName,
   shopCity,
   whatsappNumber,
+  slides,
 }: {
   shopName: string;
   shopCity: string;
   whatsappNumber: string;
+  slides?: HeroSlideWithPromotion[];
 }) {
   const cleanPhone = whatsappNumber.replace(/[^0-9]/g, '');
 
-  const slides: Slide[] = [
+  const defaultSlides: DisplaySlide[] = [
     {
       id: 'heritage',
       badge: 'ROYAL HERITAGE · 100% BIS HALLMARKED',
@@ -73,6 +80,32 @@ export function HeroCarousel({
     },
   ];
 
+  const dbSlides: DisplaySlide[] = (slides ?? []).map((slide) => {
+    let badgeText = 'ROYAL HERITAGE · 100% BIS HALLMARKED';
+    if (slide.promotion?.badgeText) {
+      badgeText = slide.promotion.headline
+        ? `${slide.promotion.badgeText.toUpperCase()} · ${slide.promotion.headline.toUpperCase()}`
+        : slide.promotion.badgeText.toUpperCase();
+    }
+
+    return {
+      id: slide.id,
+      badge: badgeText,
+      heading: slide.title,
+      subheading: slide.subtitle || '',
+      desktopImage: slide.imageUrl,
+      mobileImage: slide.mobileImageUrl || slide.imageUrl,
+      primaryCtaText: slide.ctaText || 'Explore Collection',
+      primaryCtaHref: slide.ctaUrl || '#collection',
+      secondaryCtaText: 'WhatsApp Video Call',
+      secondaryCtaHref: `https://wa.me/${cleanPhone}?text=${encodeURIComponent(
+        `Namaste ${shopName}! Mujhe '${slide.title}' ke baare mein jaankari chahiye.`
+      )}`,
+    };
+  });
+
+  const activeSlides = dbSlides.length > 0 ? dbSlides : defaultSlides;
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
 
@@ -82,12 +115,12 @@ export function HeroCarousel({
   const touchEndPosYRef = useRef<number | null>(null);
 
   const nextSlide = useCallback(() => {
-    setCurrentIndex((prev) => (prev + 1) % slides.length);
-  }, [slides.length]);
+    setCurrentIndex((prev) => (prev + 1) % activeSlides.length);
+  }, [activeSlides.length]);
 
   const prevSlide = useCallback(() => {
-    setCurrentIndex((prev) => (prev - 1 + slides.length) % slides.length);
-  }, [slides.length]);
+    setCurrentIndex((prev) => (prev - 1 + activeSlides.length) % activeSlides.length);
+  }, [activeSlides.length]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartRef.current = e.targetTouches[0].clientX;
@@ -106,7 +139,6 @@ export function HeroCarousel({
     const deltaX = touchStartRef.current - touchEndRef.current;
     const deltaY = (touchStartPosYRef.current || 0) - (touchEndPosYRef.current || 0);
 
-    // Trigger swipe if horizontal drag > 40px and dominant over vertical scroll
     if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY) * 1.2) {
       if (deltaX > 0) {
         nextSlide();
@@ -124,7 +156,7 @@ export function HeroCarousel({
     return () => clearInterval(timer);
   }, [isPaused, nextSlide]);
 
-  const activeSlide = slides[currentIndex];
+  const activeSlide = activeSlides[currentIndex] || activeSlides[0];
 
   return (
     <section
@@ -168,9 +200,11 @@ export function HeroCarousel({
             {activeSlide.heading}
           </h1>
 
-          <p className="text-base sm:text-lg text-ink-muted leading-relaxed font-body font-normal transition-all duration-500">
-            {activeSlide.subheading}
-          </p>
+          {activeSlide.subheading && (
+            <p className="text-base sm:text-lg text-ink-muted leading-relaxed font-body font-normal transition-all duration-500">
+              {activeSlide.subheading}
+            </p>
+          )}
 
           <div className="pt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-4 max-w-md">
             <ButtonLink href={activeSlide.primaryCtaHref} intent="primary" size="lg" className="justify-center px-8">
@@ -184,38 +218,44 @@ export function HeroCarousel({
       </div>
 
       {/* Carousel Controls: Arrows */}
-      <button
-        type="button"
-        onClick={prevSlide}
-        aria-label="Previous Slide"
-        className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-pill bg-surface/80 hover:bg-surface border border-line flex items-center justify-center text-ink transition-colors cursor-pointer"
-      >
-        ←
-      </button>
+      {activeSlides.length > 1 && (
+        <>
+          <button
+            type="button"
+            onClick={prevSlide}
+            aria-label="Previous Slide"
+            className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-pill bg-surface/80 hover:bg-surface border border-line flex items-center justify-center text-ink transition-colors cursor-pointer"
+          >
+            ←
+          </button>
 
-      <button
-        type="button"
-        onClick={nextSlide}
-        aria-label="Next Slide"
-        className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-pill bg-surface/80 hover:bg-surface border border-line flex items-center justify-center text-ink transition-colors cursor-pointer"
-      >
-        →
-      </button>
+          <button
+            type="button"
+            onClick={nextSlide}
+            aria-label="Next Slide"
+            className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-pill bg-surface/80 hover:bg-surface border border-line flex items-center justify-center text-ink transition-colors cursor-pointer"
+          >
+            →
+          </button>
+        </>
+      )}
 
       {/* Carousel Indicators: Dots */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
-        {slides.map((slide, idx) => (
-          <button
-            key={slide.id}
-            type="button"
-            onClick={() => setCurrentIndex(idx)}
-            aria-label={`Go to slide ${idx + 1}`}
-            className={`h-2 rounded-pill transition-all duration-300 cursor-pointer ${
-              idx === currentIndex ? 'w-8 bg-brand' : 'w-2 bg-line-strong hover:bg-ink-muted'
-            }`}
-          />
-        ))}
-      </div>
+      {activeSlides.length > 1 && (
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
+          {activeSlides.map((slide, idx) => (
+            <button
+              key={slide.id}
+              type="button"
+              onClick={() => setCurrentIndex(idx)}
+              aria-label={`Go to slide ${idx + 1}`}
+              className={`h-2 rounded-pill transition-all duration-300 cursor-pointer ${
+                idx === currentIndex ? 'w-8 bg-brand' : 'w-2 bg-line-strong hover:bg-ink-muted'
+              }`}
+            />
+          ))}
+        </div>
+      )}
     </section>
   );
 }

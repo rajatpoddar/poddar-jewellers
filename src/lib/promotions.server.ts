@@ -73,12 +73,19 @@ export async function getActivePromotions(shopId: string, now: Date = new Date()
   });
 }
 
-export async function resolveProductPromotion(
+export interface ResolvedPromotionDetails {
+  promotionDiscountBp: number;
+  badgeText: string;
+  headline?: string | null;
+  name: string;
+}
+
+export async function resolveProductPromotionDetails(
   shopId: string,
   categoryId?: string | null,
   productId?: string | null,
   now: Date = new Date()
-): Promise<number | null> {
+): Promise<ResolvedPromotionDetails | null> {
   const activePromotions = await db.promotion.findMany({
     where: {
       shopId,
@@ -108,7 +115,15 @@ export async function resolveProductPromotion(
         p.productPromotions.some((pp) => pp.productId === productId)
     );
     if (productMatches.length > 0) {
-      return Math.max(...productMatches.map((p) => p.makingDiscountPercentBp));
+      const best = productMatches.reduce((max, p) =>
+        p.makingDiscountPercentBp > max.makingDiscountPercentBp ? p : max
+      );
+      return {
+        promotionDiscountBp: best.makingDiscountPercentBp,
+        badgeText: best.badgeText,
+        headline: best.headline,
+        name: best.name,
+      };
     }
   }
 
@@ -118,17 +133,43 @@ export async function resolveProductPromotion(
       (p) => p.scope === 'CATEGORY' && p.categoryId === categoryId
     );
     if (categoryMatches.length > 0) {
-      return Math.max(...categoryMatches.map((p) => p.makingDiscountPercentBp));
+      const best = categoryMatches.reduce((max, p) =>
+        p.makingDiscountPercentBp > max.makingDiscountPercentBp ? p : max
+      );
+      return {
+        promotionDiscountBp: best.makingDiscountPercentBp,
+        badgeText: best.badgeText,
+        headline: best.headline,
+        name: best.name,
+      };
     }
   }
 
   // 3. Check SHOP_WIDE scope matches
   const shopWideMatches = activePromotions.filter((p) => p.scope === 'SHOP_WIDE');
   if (shopWideMatches.length > 0) {
-    return Math.max(...shopWideMatches.map((p) => p.makingDiscountPercentBp));
+    const best = shopWideMatches.reduce((max, p) =>
+      p.makingDiscountPercentBp > max.makingDiscountPercentBp ? p : max
+    );
+    return {
+      promotionDiscountBp: best.makingDiscountPercentBp,
+      badgeText: best.badgeText,
+      headline: best.headline,
+      name: best.name,
+    };
   }
 
   return null;
+}
+
+export async function resolveProductPromotion(
+  shopId: string,
+  categoryId?: string | null,
+  productId?: string | null,
+  now: Date = new Date()
+): Promise<number | null> {
+  const details = await resolveProductPromotionDetails(shopId, categoryId, productId, now);
+  return details ? details.promotionDiscountBp : null;
 }
 
 export async function createPromotion(shopId: string, input: CreatePromotionInput) {

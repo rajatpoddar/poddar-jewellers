@@ -7,6 +7,7 @@ import { formatINR } from '@/lib/money';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { WishlistButton } from '@/components/store/WishlistButton';
 import { BookOrderModal } from '@/components/store/BookOrderModal';
+import { ProductPriceDisplay } from '@/components/store/ProductPriceDisplay';
 import type { RoundingConfig } from '@/lib/pricing/types';
 
 export function buildWhatsAppLink(
@@ -31,6 +32,7 @@ type Props = {
   stoneValuePaise: number;
   gstPercentBp: number;
   rounding?: RoundingConfig;
+  promotionDiscountBp?: number;
   initialCustomer?: { name: string; phone: string } | null;
   whatsappNumber: string;
 };
@@ -67,6 +69,7 @@ export function WeightSelector({
   stoneValuePaise,
   gstPercentBp,
   rounding = DEFAULT_ROUNDING,
+  promotionDiscountBp,
   initialCustomer,
   whatsappNumber,
 }: Props) {
@@ -96,6 +99,7 @@ export function WeightSelector({
           makingPercentBp: resolvedMakingBp,
           stoneValuePaise: stoneValuePaise || 0,
           weightMg: selectedWeightMg,
+          promotionDiscountBp,
         },
         rates,
         gstPercentBp,
@@ -147,10 +151,20 @@ export function WeightSelector({
       {/* Dynamic Price Card */}
       <div className="bg-surface-sunk border border-line rounded-card p-6 space-y-2">
         <span className="text-xs text-ink-muted uppercase tracking-wider block">Estimated Price</span>
-        <div className="font-display text-3xl font-bold text-ink numeric">
-          {formattedPrice} <span className="text-sm font-normal text-ink-muted">(approx.)</span>
-        </div>
-        <p className="text-xs text-ink-faint">
+        {priceResult ? (
+          <ProductPriceDisplay
+            displayPaise={priceResult.displayPaise}
+            originalTotalPaise={priceResult.originalTotalPaise}
+            hasDiscount={priceResult.hasDiscount}
+            discountAmountPaise={priceResult.discountAmountPaise}
+            size="lg"
+          />
+        ) : (
+          <div className="font-display text-3xl font-bold text-ink numeric">
+            N/A <span className="text-sm font-normal text-ink-muted">(approx.)</span>
+          </div>
+        )}
+        <p className="text-xs text-ink-faint pt-1">
           Aaj ke rate par anumaanit, sab tax shaamil. Final price bill banate samay weigh machine par decide hoga.
         </p>
       </div>

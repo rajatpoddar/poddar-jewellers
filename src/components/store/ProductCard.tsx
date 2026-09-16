@@ -6,6 +6,8 @@ import { formatINR } from '@/lib/money';
 import { ButtonLink } from '@/components/ui/Button';
 import { WishlistButton } from './WishlistButton';
 
+import { OfferBadge } from '@/components/store/OfferBadge';
+
 export function getPriceRangeLabel(minPaise: number | null, maxPaise: number | null): string {
   if (!minPaise) return 'Price on request';
   if (!maxPaise || minPaise === maxPaise) {
@@ -45,7 +47,13 @@ function getFallbackImage(slug?: string): string | null {
   return null;
 }
 
-export function ProductCard({ product }: { product: ProductWithDetails }) {
+export function ProductCard({
+  product,
+  promotion,
+}: {
+  product: ProductWithDetails;
+  promotion?: { badgeText: string; headline?: string | null; makingDiscountPercentBp?: number } | null;
+}) {
   const primaryImg = product.images.find((img) => img.isPrimary) || product.images[0];
   const priceLabel = getPriceRangeLabel(product.cachedPriceMinPaise, product.cachedPriceMaxPaise);
   const imgSrc = primaryImg ? getImageUrl(primaryImg) : getFallbackImage(product.category?.slug);
@@ -66,12 +74,16 @@ export function ProductCard({ product }: { product: ProductWithDetails }) {
             No Image
           </div>
         )}
-        {product.category && (
+        {promotion ? (
+          <div className="absolute top-3 left-3 z-10">
+            <OfferBadge badgeText={promotion.badgeText} />
+          </div>
+        ) : product.category ? (
           <span className="absolute top-3 left-3 bg-surface/95 backdrop-blur border border-line px-2.5 py-1 text-[11px] font-medium tracking-wider uppercase text-ink-muted rounded-field">
             {product.category.name}
           </span>
-        )}
-        <div className="absolute top-3 right-3 bg-surface/90 backdrop-blur border border-line p-1.5 rounded-full shadow-sm">
+        ) : null}
+        <div className="absolute top-3 right-3 bg-surface/90 backdrop-blur border border-line p-1.5 rounded-full shadow-sm z-10">
           <WishlistButton productId={product.id} />
         </div>
       </Link>

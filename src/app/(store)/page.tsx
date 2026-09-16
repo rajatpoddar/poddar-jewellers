@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { getHomepageData } from '@/lib/store.server';
+import { getActiveHeroSlides } from '@/lib/hero-slides.server';
+import { getActivePromotions } from '@/lib/promotions.server';
 import { ProductCard } from '@/components/store/ProductCard';
 import { CategoryTile } from '@/components/store/CategoryTile';
 import { HeroCarousel } from '@/components/store/HeroCarousel';
@@ -24,8 +26,34 @@ function getCategoryImage(slug: string): string | undefined {
 
 export default async function HomePage() {
   const { shop, categories, featuredProducts } = await getHomepageData();
+  const heroSlides = await getActiveHeroSlides(shop.id);
+  const activePromotions = await getActivePromotions(shop.id);
+
   const shopObj = shop as typeof shop & { whatsappNumber?: string; whatsapp?: string; heroHeading?: string; heroSubheading?: string };
   const whatsappNumber = shopObj.whatsappNumber || shopObj.whatsapp || '';
+
+  function resolvePromoForProduct(productId: string, categoryId: string) {
+    if (activePromotions.length === 0) return null;
+
+    const prodMatches = activePromotions.filter(
+      (p) => p.scope === 'PRODUCT' && p.productPromotions.some((pp) => pp.productId === productId)
+    );
+    if (prodMatches.length > 0) {
+      return prodMatches.reduce((max, p) => (p.makingDiscountPercentBp > max.makingDiscountPercentBp ? p : max));
+    }
+
+    const catMatches = activePromotions.filter((p) => p.scope === 'CATEGORY' && p.categoryId === categoryId);
+    if (catMatches.length > 0) {
+      return catMatches.reduce((max, p) => (p.makingDiscountPercentBp > max.makingDiscountPercentBp ? p : max));
+    }
+
+    const shopMatches = activePromotions.filter((p) => p.scope === 'SHOP_WIDE');
+    if (shopMatches.length > 0) {
+      return shopMatches.reduce((max, p) => (p.makingDiscountPercentBp > max.makingDiscountPercentBp ? p : max));
+    }
+
+    return null;
+  }
 
   return (
     <div className="space-y-20 pb-20">
@@ -34,6 +62,7 @@ export default async function HomePage() {
         shopName={shop.name}
         shopCity={shop.city}
         whatsappNumber={whatsappNumber}
+        slides={heroSlides}
       />
 
       {/* Luxury Trust Pillars */}
@@ -107,9 +136,10 @@ export default async function HomePage() {
             </Link>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {featuredProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
+            {featuredProducts.map((product) => {
+              const promo = resolvePromoForProduct(product.id, product.categoryId);
+              return <ProductCard key={product.id} product={product} promotion={promo} />;
+            })}
           </div>
         </section>
       )}
