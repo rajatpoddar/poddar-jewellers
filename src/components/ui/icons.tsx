@@ -130,3 +130,18 @@ export const OrderIcon = () => (
   </Svg>
 );
 
+export const SendIcon = () => (
+  <Svg>
+    <path d="m22 2-7 20-4-9-9-4Z" />
+    <path d="M22 2 11 13" />
+  </Svg>
+);
+
+export const DownloadIcon = () => (
+  <Svg>
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <path d="m7 10 5 5 5-5" />
+    <path d="M12 15V3" />
+  </Svg>
+);
+

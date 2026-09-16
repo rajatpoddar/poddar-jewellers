@@ -9,6 +9,7 @@ import {
 } from './crm-ui-helpers';
 import { CustomerSegmentFilters } from './CustomerSegmentFilters';
 import { TagBadgeSelect } from './TagBadgeSelect';
+import { OutreachWorkspace } from './OutreachWorkspace';
 
 describe('CRM UI Helpers', () => {
   describe('parseOptInFilter', () => {
@@ -181,9 +182,10 @@ describe('CRM UI Helpers', () => {
   });
 
   describe('Component Function Exports', () => {
-    it('CustomerSegmentFilters and TagBadgeSelect components are valid functions', () => {
+    it('CustomerSegmentFilters, TagBadgeSelect, and OutreachWorkspace components are valid functions', () => {
       expect(typeof CustomerSegmentFilters).toBe('function');
       expect(typeof TagBadgeSelect).toBe('function');
+      expect(typeof OutreachWorkspace).toBe('function');
     });
   });
 });
