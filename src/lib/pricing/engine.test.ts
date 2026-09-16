@@ -145,4 +145,74 @@ describe('estimate', () => {
       ),
     ).toThrow(/weight/i);
   });
+
+  describe('promotional making charge discounts', () => {
+    it('returns hasDiscount: false, discountAmountPaise: 0, originalTotalPaise: undefined when no discount is provided', () => {
+      const r = estimate(
+        { weightMg: 23000, metalKey: 'GOLD_22K', makingPercentBp: 1500, stoneValuePaise: 0 },
+        RATES, GST_BP, ROUNDING,
+      );
+      expect(r.hasDiscount).toBe(false);
+      expect(r.discountAmountPaise).toBe(0);
+      expect(r.originalTotalPaise).toBeUndefined();
+    });
+
+    it('applies a 25% promo making charge discount reducing making charge by 25%', () => {
+      // Worked example: 23g 22K gold @ Rs 12,400/g = Rs 2,85,200 (28520000 paise)
+      // Base making 15% (1500 bp) = Rs 42,780 (4278000 paise)
+      // Promo discount 25% (2500 bp) -> effective making 11.25% (1125 bp)
+      // Effective making = 28520000 * 1125 / 10000 = 3208500 paise (Rs 32,085)
+      // Un-discounted total: subtotal 32798000 + GST 983940 = 33781940 -> display 33790000 (Rs 3,37,900)
+      // Discounted total: subtotal 31728500 + GST 951855 = 32680355 -> display 32690000 (Rs 3,26,900)
+      // originalTotalPaise = 33790000
+      // discountAmountPaise = 33790000 - 32690000 = 1100000 (Rs 11,000)
+      const r = estimate(
+        {
+          weightMg: 23000,
+          metalKey: 'GOLD_22K',
+          makingPercentBp: 1500,
+          stoneValuePaise: 0,
+          promotionDiscountBp: 2500,
+        },
+        RATES, GST_BP, ROUNDING,
+      );
+
+      expect(r.makingPaise).toBe(3208500); // Rs 32,085
+      expect(r.hasDiscount).toBe(true);
+      expect(r.displayPaise).toBe(32690000); // Rs 3,26,900
+      expect(r.originalTotalPaise).toBe(33790000); // Rs 3,37,900
+      expect(r.discountAmountPaise).toBe(1100000); // Rs 11,000
+    });
+
+    it('rounds up discounted total to the rounding step', () => {
+      const r = estimate(
+        {
+          weightMg: 23000,
+          metalKey: 'GOLD_22K',
+          makingPercentBp: 1500,
+          stoneValuePaise: 0,
+          promotionDiscountBp: 2500,
+        },
+        RATES, GST_BP, ROUNDING,
+      );
+      expect(r.displayPaise).toBeGreaterThanOrEqual(r.totalPaise);
+      expect(r.displayPaise % ROUNDING.stepPaise).toBe(0);
+    });
+
+    it('returns hasDiscount: false when base making charge is 0', () => {
+      const r = estimate(
+        {
+          weightMg: 23000,
+          metalKey: 'GOLD_22K',
+          makingPercentBp: 0,
+          stoneValuePaise: 0,
+          promotionDiscountBp: 2500,
+        },
+        RATES, GST_BP, ROUNDING,
+      );
+      expect(r.hasDiscount).toBe(false);
+      expect(r.discountAmountPaise).toBe(0);
+      expect(r.originalTotalPaise).toBeUndefined();
+    });
+  });
 });

@@ -38,3 +38,18 @@ export function resolveMakingPercent(
 
   return { percentBp: defaultBp, source: { kind: 'default' } };
 }
+
+/**
+ * Calculates the effective making charge basis points after applying a promotional discount.
+ *
+ * `promotionDiscountBp` is integer basis points off making charge (e.g. 2500 = 25% off making charges).
+ * Discount is clamped between 0 and 10000 (100%).
+ */
+export function calculateEffectiveMakingBp(
+  baseMakingBp: number,
+  promotionDiscountBp?: number,
+): number {
+  if (!promotionDiscountBp || promotionDiscountBp <= 0) return baseMakingBp;
+  const clampedDiscount = Math.min(10000, promotionDiscountBp);
+  return Math.max(0, Math.round((baseMakingBp * (10000 - clampedDiscount)) / 10000));
+}

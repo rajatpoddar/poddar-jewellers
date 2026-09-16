@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolveMakingPercent } from './making';
+import { resolveMakingPercent, calculateEffectiveMakingBp } from './making';
 
 const DEFAULT_BP = 1500;
 
@@ -58,5 +58,25 @@ describe('resolveMakingPercent', () => {
     );
     expect(r.percentBp).toBe(0);
     expect(r.source).toEqual({ kind: 'product' });
+  });
+});
+
+describe('calculateEffectiveMakingBp', () => {
+  it('returns base making bp when no discount is provided or discount is non-positive', () => {
+    expect(calculateEffectiveMakingBp(1500)).toBe(1500);
+    expect(calculateEffectiveMakingBp(1500, 0)).toBe(1500);
+    expect(calculateEffectiveMakingBp(1500, -500)).toBe(1500);
+  });
+
+  it('reduces making charge by the discount percentage in basis points', () => {
+    // 15% (1500 bp) with 25% discount (2500 bp) -> 11.25% (1125 bp)
+    expect(calculateEffectiveMakingBp(1500, 2500)).toBe(1125);
+    // 10% (1000 bp) with 50% discount (5000 bp) -> 5% (500 bp)
+    expect(calculateEffectiveMakingBp(1000, 5000)).toBe(500);
+  });
+
+  it('clamps maximum discount to 10000 (100%)', () => {
+    expect(calculateEffectiveMakingBp(1000, 10000)).toBe(0);
+    expect(calculateEffectiveMakingBp(1000, 15000)).toBe(0);
   });
 });

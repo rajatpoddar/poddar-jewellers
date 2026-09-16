@@ -1,4 +1,5 @@
 import { applyPercentBp, roundUpPaise } from '../money';
+import { calculateEffectiveMakingBp } from './making';
 import type { PriceBreakdown, PriceInput, RateSet, RoundingConfig } from './types';
 
 /**
@@ -39,7 +40,8 @@ export function estimate(
   }
 
   const metalPaise = Math.round((input.weightMg * ratePaisePerGram) / 1000);
-  const makingPaise = applyPercentBp(metalPaise, input.makingPercentBp);
+  const effectiveMakingBp = calculateEffectiveMakingBp(input.makingPercentBp, input.promotionDiscountBp);
+  const makingPaise = applyPercentBp(metalPaise, effectiveMakingBp);
   const stonePaise = input.stoneValuePaise;
 
   const subtotalPaise = metalPaise + makingPaise + stonePaise;
@@ -47,6 +49,30 @@ export function estimate(
   const totalPaise = subtotalPaise + gstPaise;
 
   const step = totalPaise >= rounding.thresholdPaise ? rounding.stepPaise : rounding.smallStepPaise;
+  const displayPaise = roundUpPaise(totalPaise, step);
+
+  let originalTotalPaise: number | undefined;
+  let hasDiscount = false;
+  let discountAmountPaise = 0;
+
+  if (
+    input.promotionDiscountBp !== undefined &&
+    input.promotionDiscountBp > 0 &&
+    effectiveMakingBp < input.makingPercentBp
+  ) {
+    const baseMakingPaise = applyPercentBp(metalPaise, input.makingPercentBp);
+    const baseSubtotalPaise = metalPaise + baseMakingPaise + stonePaise;
+    const baseGstPaise = applyPercentBp(baseSubtotalPaise, gstPercentBp);
+    const baseTotalPaise = baseSubtotalPaise + baseGstPaise;
+    const baseStep = baseTotalPaise >= rounding.thresholdPaise ? rounding.stepPaise : rounding.smallStepPaise;
+    const baseDisplayPaise = roundUpPaise(baseTotalPaise, baseStep);
+
+    if (baseDisplayPaise > displayPaise) {
+      hasDiscount = true;
+      originalTotalPaise = baseDisplayPaise;
+      discountAmountPaise = baseDisplayPaise - displayPaise;
+    }
+  }
 
   return {
     metalPaise,
@@ -55,6 +81,9 @@ export function estimate(
     subtotalPaise,
     gstPaise,
     totalPaise,
-    displayPaise: roundUpPaise(totalPaise, step),
+    displayPaise,
+    originalTotalPaise,
+    hasDiscount,
+    discountAmountPaise,
   };
 }

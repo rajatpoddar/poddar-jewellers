@@ -19,6 +19,8 @@ export interface PriceInput {
   makingPercentBp: number;
   /** Fixed rupee value of any stone or diamond. Does not scale with weight. */
   stoneValuePaise: number;
+  /** Promotional making charge discount in basis points (e.g. 2500 = 25% off making charges). */
+  promotionDiscountBp?: number;
 }
 
 export interface RoundingConfig {
@@ -39,4 +41,8 @@ export interface PriceBreakdown {
   totalPaise: number;
   /** Rounded up. The only figure the customer is ever shown. */
   displayPaise: number;
+  /** Pre-discount rounded display total if discount applied. */
+  originalTotalPaise?: number;
+  hasDiscount: boolean;
+  discountAmountPaise: number;
 }
