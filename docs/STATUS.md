@@ -1,7 +1,7 @@
 # Status
 
 **Updated:** 2026-09-16  
-**Phase:** Phase 1 (Catalog, Price Engine & Storefront), Phase 2 (Customer Accounts, Wishlist Sync & Printable Invoicing), Phase 3 (CRM Segmentation, Customer Tagging, Direct Marketing & Public Rates Removal), Phase 4 (WhatsApp Automation Engine & Dual-Track Notifications), Phase 5 (Campaign & Festive Offer Engine), and Phase 6 (Hermes Agent Admin API & Automation Suite) complete and verified.  
+**Phase:** Phase 1 through Phase 6 complete and verified. Mobile hamburger navigation menu on iOS Safari decoupled and fully operational.  
 **Design system:** built and applied across all Admin, Customer Portal, and Storefront screens (D15).
 
 ---
@@ -13,6 +13,7 @@ re-prices itself. Products, categories, metal types, campaign promotions, hero s
 managed from there. Customers browse at `/`, view category listings via the Catalogue Header Dropdown, select product weight options, calculate live estimated prices (including active festive making charge discounts), search the entire catalogue at `/search`, save designs to wishlist at `/wishlist`, authenticate via WhatsApp OTP (Evolution API), book designs with target dates (*"Required-By Date"*), view their placed orders at `/orders`, receive automated WhatsApp order updates, and start conversations on WhatsApp.
 
 Public metal rates display has been completely removed from the storefront (customers see only final computed estimated total prices), and `/rates` permanently redirects to `/`.
+
 
 Built and verified:
 
