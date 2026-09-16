@@ -5,9 +5,16 @@ import {
   createCustomerSessionCookie,
 } from '@/lib/auth/customer-session';
 import { sanitizeIndianPhone } from '@/lib/whatsapp/evolution';
-import { createOrder, updateOrderStatus } from '@/lib/orders/engine';
+import {
+  createOrder,
+  updateOrderStatus as updateOrderStatusEngine,
+} from '@/lib/orders/engine';
 import { logCustomerActivity } from '@/lib/crm/activity';
 import { updateMarketingConsentLogic } from '@/lib/crm-consent-helpers';
+import {
+  enqueueNotification,
+  processNotificationQueue,
+} from '@/lib/whatsapp-notifications.server';
 import type { OrderStatus } from '@prisma/client';
 
 export interface CreateOrderBookingInput {
@@ -117,6 +124,58 @@ export async function createOrderBooking(input: CreateOrderBookingInput): Promis
       },
     });
 
+    // Enqueue automated WhatsApp notifications & admin alerts
+    try {
+      const customerName = order.customer?.name || input.name?.trim() || 'Grahak';
+      const customerPhone = order.customer?.phone || input.phone || '';
+      const productName = order.items?.[0]?.productName || 'Jewellery';
+      const orderRef = order.orderNumber;
+      const targetDate = input.requiredByDate || null;
+
+      if (customerPhone) {
+        // 1. Customer booking notification
+        await enqueueNotification({
+          shopId: shop.id,
+          type: 'ORDER_BOOKED',
+          recipient: customerPhone,
+          payload: {
+            customerName,
+            orderRef,
+            productName,
+            requiredByDate: targetDate,
+            orderUrl: '/orders',
+          },
+          orderId: order.id,
+          customerId,
+        });
+      }
+
+      if (shop.phone) {
+        // 2. Shop Admin alert
+        await enqueueNotification({
+          shopId: shop.id,
+          type: 'ADMIN_NEW_ORDER_ALERT',
+          recipient: shop.phone,
+          payload: {
+            customerName,
+            customerPhone,
+            orderRef,
+            productName,
+            adminOrderUrl: '/admin/orders',
+          },
+          orderId: order.id,
+          customerId,
+        });
+      }
+
+      // Process queue asynchronously without stalling HTTP execution
+      processNotificationQueue(shop.id).catch((err) => {
+        console.error('Failed to process notification queue in background:', err);
+      });
+    } catch (queueErr) {
+      console.error('Failed to enqueue order notifications:', queueErr);
+    }
+
     return {
       success: true,
       orderId: order.id,
@@ -128,15 +187,68 @@ export async function createOrderBooking(input: CreateOrderBookingInput): Promis
   }
 }
 
-export async function updateOrderStatusServer(
+const NOTIFIABLE_STATUSES: OrderStatus[] = ['CONFIRMED', 'READY', 'COMPLETED'];
+
+export async function updateOrderStatus(
   orderId: string,
   status: OrderStatus
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    await updateOrderStatus(orderId, status);
+    const shop = await getShop();
+    const updatedOrder = await updateOrderStatusEngine(orderId, status);
+
+    if (NOTIFIABLE_STATUSES.includes(status)) {
+      try {
+        let customer = updatedOrder?.customer;
+        let customerPhone = customer?.phone;
+        let customerName = customer?.name || 'Grahak';
+        let orderNumber = updatedOrder?.orderNumber;
+        let customerId = updatedOrder?.customerId;
+
+        if (!customerPhone && db.order?.findUnique) {
+          const orderWithCustomer = await db.order.findUnique({
+            where: { id: orderId },
+            include: { customer: true },
+          });
+          if (orderWithCustomer?.customer) {
+            customerPhone = orderWithCustomer.customer.phone;
+            customerName = orderWithCustomer.customer.name || customerName;
+            orderNumber = orderWithCustomer.orderNumber || orderNumber;
+            customerId = orderWithCustomer.customerId || customerId;
+          }
+        }
+
+        if (customerPhone) {
+          await enqueueNotification({
+            shopId: shop.id,
+            type: 'ORDER_STATUS_CHANGED',
+            recipient: customerPhone,
+            payload: {
+              customerName,
+              orderRef: orderNumber || orderId,
+              newStatus: status,
+              status,
+              orderUrl: '/orders',
+            },
+            orderId,
+            customerId: customerId || undefined,
+          });
+
+          processNotificationQueue(shop.id).catch((err) => {
+            console.error('Failed to process notification queue on status update:', err);
+          });
+        }
+      } catch (queueErr) {
+        console.error('Failed to enqueue order status change notification:', queueErr);
+      }
+    }
+
     return { success: true };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Order status update fail ho gaya.';
     return { success: false, error: message };
   }
 }
+
+export const updateOrderStatusServer = updateOrderStatus;
+

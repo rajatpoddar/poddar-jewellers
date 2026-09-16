@@ -169,6 +169,9 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus) {
   return db.order.update({
     where: { id: orderId, shopId: shop.id },
     data: { status },
+    include: {
+      customer: true,
+    },
   });
 }
 

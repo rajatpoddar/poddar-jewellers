@@ -7,6 +7,11 @@ vi.mock('@/lib/db', () => ({
       upsert: vi.fn(),
       update: vi.fn(),
     },
+    notificationQueue: {
+      create: vi.fn(),
+      findMany: vi.fn().mockResolvedValue([]),
+      update: vi.fn(),
+    },
   },
 }));
 
