@@ -103,6 +103,9 @@ model Shop {
   customers          Customer[]
   customerActivities CustomerActivity[]
   orders             Order[]
+  customerTags       CustomerTag[]
+  campaignTemplates  CampaignTemplate[]
+  outreachLogs       OutreachLog[]
 }
 
 /// The purities this shop deals in. Data, never an enum: another shop may carry
@@ -302,13 +305,19 @@ model Customer {
   pincode      String?
   notes        String? // Diary notes (e.g., preference, family relation)
 
+  marketingOptIn Boolean   @default(false)
+  optInSource    String?
+  optInAt        DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  sessions   CustomerSession[]
-  wishlist   WishlistItem[]
-  orders     Order[]
-  activities CustomerActivity[]
+  sessions     CustomerSession[]
+  wishlist     WishlistItem[]
+  orders       Order[]
+  activities   CustomerActivity[]
+  tags         CustomerTag[]
+  outreachLogs OutreachLog[]
 
   @@unique([shopId, phone])
   @@index([shopId, phone])
@@ -418,3 +427,49 @@ model OrderItem {
 
   @@index([orderId])
 }
+
+model CustomerTag {
+  id        String   @id @default(cuid())
+  shopId    String
+  name      String
+  color     String?
+  createdAt DateTime @default(now())
+
+  customers Customer[]
+  shop      Shop       @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, name])
+  @@index([shopId])
+}
+
+model CampaignTemplate {
+  id        String   @id @default(cuid())
+  shopId    String
+  name      String
+  bodyText  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  shop         Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  outreachLogs OutreachLog[]
+
+  @@index([shopId])
+}
+
+model OutreachLog {
+  id          String   @id @default(cuid())
+  shopId      String
+  customerId  String
+  templateId  String?
+  messageText String
+  channel     String   @default("WHATSAPP")
+  sentAt      DateTime @default(now())
+
+  customer Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  template CampaignTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  shop     Shop              @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId])
+  @@index([customerId])
+}
+

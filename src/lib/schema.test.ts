@@ -10,3 +10,12 @@ describe('Phase 2 Schema Integrity', () => {
     expect(db.order).toBeDefined();
   });
 });
+
+describe('Phase 3 Schema Integrity', () => {
+  it('has customer tag, campaign template and outreach log tables configured', () => {
+    expect(db.customerTag).toBeDefined();
+    expect(db.campaignTemplate).toBeDefined();
+    expect(db.outreachLog).toBeDefined();
+  });
+});
+
