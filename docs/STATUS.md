@@ -1,7 +1,7 @@
 # Status
 
-**Updated:** 2026-09-16
-**Phase:** Phase 1 (Catalog, Price Engine & Storefront), Phase 2 (Customer Accounts, Wishlist Sync & Printable Invoicing), Phase 3 (CRM Segmentation, Customer Tagging, Direct Marketing & Public Rates Removal), and Phase 4 (WhatsApp Automation Engine & Dual-Track Notifications) complete and verified.
+**Updated:** 2026-09-16  
+**Phase:** Phase 1 (Catalog, Price Engine & Storefront), Phase 2 (Customer Accounts, Wishlist Sync & Printable Invoicing), Phase 3 (CRM Segmentation, Customer Tagging, Direct Marketing & Public Rates Removal), Phase 4 (WhatsApp Automation Engine & Dual-Track Notifications), and Phase 5 (Campaign & Festive Offer Engine) complete and verified.  
 **Design system:** built and applied across all Admin, Customer Portal, and Storefront screens (D15).
 
 ---
@@ -9,17 +9,24 @@
 ## What works today
 
 Sign in at `/admin`, enter the morning's rate, press Save — the entire catalog
-re-prices itself. Products, categories, metal types and every shop setting are
-managed from there. Customers browse at `/`, view category listings, select product weight options, calculate live estimated prices, search the entire catalogue at `/search`, save designs to wishlist at `/wishlist`, authenticate via WhatsApp OTP (Evolution API), book designs with target dates (*"Required-By Date"*), view their placed orders at `/orders`, receive automated WhatsApp order updates, and start conversations on WhatsApp.
+re-prices itself. Products, categories, metal types, campaign promotions, hero slides and every shop setting are
+managed from there. Customers browse at `/`, view category listings, select product weight options, calculate live estimated prices (including active festive making charge discounts), search the entire catalogue at `/search`, save designs to wishlist at `/wishlist`, authenticate via WhatsApp OTP (Evolution API), book designs with target dates (*"Required-By Date"*), view their placed orders at `/orders`, receive automated WhatsApp order updates, and start conversations on WhatsApp.
 
 Public metal rates display has been completely removed from the storefront (customers see only final computed estimated total prices), and `/rates` permanently redirects to `/`.
 
 Built and verified:
 
-- **Price engine** — pure, no database or framework, exhaustively tested
-- **Schema** — metal types as rows, not an enum; `shopId` on every shop-owned table
+- **Price engine** — pure, no database or framework, supports percentage basis points making charge discounts, dual price breakdowns (`totalPaise` vs `originalTotalPaise`), exhaustively tested
+- **Schema** — metal types as rows, not an enum; `shopId` on every shop-owned table; `Promotion`, `ProductPromotion`, `HeroSlide` models added
 - **Shop context** — one `getShop()`, the single thing multi-tenancy would change
-- **Admin** — login, daily rate screen, metal types, categories, products, settings, diary contact import, customer CRM activity timeline, orders management, and printable A4 luxury GST invoice generator
+- **Admin** — login, daily rate screen, metal types, categories, products, settings, diary contact import, customer CRM activity timeline, orders management, printable A4 luxury GST invoice generator, Promotions Hub (`/admin/promotions`), and Hero Carousel Manager (`/admin/carousel`)
+- **Phase 5 Campaign & Festive Offer Engine (`/admin/promotions` & `/admin/carousel`)**:
+  - **Dynamic Making Charge Discounts**: Configurable percentage discounts on making charges (e.g. 25% OFF Making Charges).
+  - **Flexible Scoping**: Shop-wide, Category-specific, or Product-specific offer rules.
+  - **Hybrid Activation**: Start/End datetime scheduling with emergency 1-click manual ON/OFF switch.
+  - **Dynamic Hero Carousel**: Database-backed `HeroSlide` entries linked to active promotions with mobile/desktop background fallback.
+  - **Storefront Badges & Strikethrough Pricing**: Festive offer ribbons (e.g. `🎉 Dhanteras Special: 25% Off Making Charges`) and strikethrough price displays (~~₹1,42,000~~ **₹1,38,500**).
+  - **WhatsApp Outreach Integration**: Outreach Hub (`/admin/customers/outreach`) supports 1-click selection of active campaign promotions with auto-populated template variables (`{{PromotionName}}`, `{{DiscountText}}`, `{{ProductUrl}}`).
 - **Phase 4 WhatsApp Automation Engine (`whatsapp-notifications.server.ts` & `whatsapp-cloud.server.ts`)**:
   - **Dual-Track Architecture**: Transactional notifications via Evolution API (0 ban risk, 0 cost) and Marketing broadcasts via Meta WhatsApp Cloud API REST (`v19.0`).
   - **Automated Event Triggers**: Order booking creation (`createOrderBooking`) fires instant Customer Booking Confirmation (`ORDER_BOOKED`) and instant Admin WhatsApp Alert (`ADMIN_NEW_ORDER_ALERT`). Order status updates (`CONFIRMED`, `READY`, `COMPLETED`) fire instant Customer Status Notifications.
@@ -55,7 +62,7 @@ Built and verified:
 - **Deployment & Design System**:
   - Token layer driven by the `Shop` row, component vocabulary in `src/components/ui/`, every admin, customer, and storefront screen built on both.
 
-274 tests pass across 38 test files. `tsc --noEmit` clean. Production build succeeds.
+301 tests pass across 40 test files. `tsc --noEmit` clean. Production build succeeds.
 
 Two of those tests enforce rules rather than behaviour:
 - `src/lib/no-hardcoded-shop.test.ts` walks `src/` for shop-specific literals.
@@ -65,8 +72,7 @@ Two of those tests enforce rules rather than behaviour:
 
 ## Next
 
-1. Move to Phase 5 (Campaign & Festival Offer Engine: Dhanteras / Diwali offer discounts, making charge promotions, carousel banner scheduler).
-2. Production Launch Setup (Domain purchase `poddarjewellers.in`, NAS Docker stack deployment via Cloudflare Tunnel).
+1. Production Launch Setup (Domain purchase `poddarjewellers.in`, NAS Docker stack deployment via Cloudflare Tunnel).
 
 ---
 
