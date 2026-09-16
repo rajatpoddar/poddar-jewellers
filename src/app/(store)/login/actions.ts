@@ -72,53 +72,28 @@ export async function verifyOtpAction(
   }
 }
 
+import { registerCustomerProfile, type RegisterCustomerProfileInput } from '@/lib/auth.server';
+
+export { registerCustomerProfile, type RegisterCustomerProfileInput };
+
 export async function completeCustomerRegistrationAction(
   phone: string,
   name: string,
   addressLine1?: string,
   city?: string,
   pincode?: string,
-  wishlistProductIds: string[] = []
+  wishlistProductIds: string[] = [],
+  marketingOptIn?: boolean
 ): Promise<{ success: boolean; error?: string }> {
-  try {
-    const cleanPhone = normalizePhone(phone);
-    const shop = await getShop();
-
-    if (!name || name.trim().length === 0) {
-      return { success: false, error: 'Kripya apna naam enter karein.' };
-    }
-
-    const customer = await db.customer.upsert({
-      where: {
-        shopId_phone: {
-          shopId: shop.id,
-          phone: cleanPhone,
-        },
-      },
-      create: {
-        shopId: shop.id,
-        phone: cleanPhone,
-        name: name.trim(),
-        addressLine1: addressLine1?.trim() || null,
-        city: city?.trim() || null,
-        pincode: pincode?.trim() || null,
-      },
-      update: {
-        name: name.trim(),
-        addressLine1: addressLine1?.trim() || null,
-        city: city?.trim() || null,
-        pincode: pincode?.trim() || null,
-      },
-    });
-
-    await createCustomerSessionCookie(customer.id, shop.id);
-    await syncWishlistToDatabase(customer.id, wishlistProductIds);
-
-    return { success: true };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Registration complete nahi ho paya.';
-    return { success: false, error: message };
-  }
+  return registerCustomerProfile({
+    phone,
+    name,
+    addressLine1,
+    city,
+    pincode,
+    wishlistProductIds,
+    marketingOptIn,
+  });
 }
 
 export async function logoutCustomerAction(): Promise<{ success: boolean }> {

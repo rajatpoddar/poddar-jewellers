@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
-import { Field, Input } from '@/components/ui/Field';
+import { Field, Input, Checkbox } from '@/components/ui/Field';
 import { Notice } from '@/components/ui/Notice';
 import { CloseIcon } from '@/components/ui/icons';
 import { getWishlistIds } from '@/lib/wishlist';
@@ -28,6 +28,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
   const [addressLine1, setAddressLine1] = useState('');
   const [city, setCity] = useState('');
   const [pincode, setPincode] = useState('');
+  const [marketingOptIn, setMarketingOptIn] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,6 +42,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
     setAddressLine1('');
     setCity('');
     setPincode('');
+    setMarketingOptIn(true);
     setError(null);
     setLoading(false);
   }
@@ -116,7 +118,8 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
       addressLine1,
       city,
       pincode,
-      wishlistIds
+      wishlistIds,
+      marketingOptIn
     );
     setLoading(false);
 
@@ -269,6 +272,12 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
                 />
               </Field>
             </div>
+
+            <Checkbox
+              label="WhatsApp par festive offers aur design updates receive karein"
+              checked={marketingOptIn}
+              onChange={(e) => setMarketingOptIn(e.target.checked)}
+            />
 
             <Button
               type="submit"

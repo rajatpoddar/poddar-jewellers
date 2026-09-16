@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { bookOrderAction } from '@/app/(store)/orders/actions';
 import { Button } from '@/components/ui/Button';
-import { Field, Input, Textarea } from '@/components/ui/Field';
+import { Field, Input, Textarea, Checkbox } from '@/components/ui/Field';
 import { Notice } from '@/components/ui/Notice';
 import Link from 'next/link';
 
@@ -32,6 +32,7 @@ export function BookOrderModal({
   const [customerNotes, setCustomerNotes] = useState('');
   const [name, setName] = useState(initialCustomer?.name || '');
   const [phone, setPhone] = useState(initialCustomer?.phone || '');
+  const [marketingOptIn, setMarketingOptIn] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [bookingSuccess, setBookingSuccess] = useState<{
@@ -53,6 +54,7 @@ export function BookOrderModal({
       customerNotes: customerNotes || null,
       name,
       phone,
+      marketingOptIn,
     });
 
     setLoading(false);
@@ -152,6 +154,12 @@ export function BookOrderModal({
                 rows={3}
               />
             </Field>
+
+            <Checkbox
+              label="WhatsApp par festive offers aur design updates receive karein"
+              checked={marketingOptIn}
+              onChange={(e) => setMarketingOptIn(e.target.checked)}
+            />
 
             <div className="flex gap-3 pt-4 border-t border-line">
               <Button type="submit" intent="primary" size="lg" className="flex-1 justify-center" disabled={loading}>
