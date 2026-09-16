@@ -73,6 +73,11 @@ model Shop {
   evolutionApiKey   String?
   evolutionInstance String  @default("NregaBot")
 
+  // Meta Cloud API Config
+  metaPhoneNumberId String?
+  metaAccessToken   String?
+  metaWabaId        String?
+
   // Pricing
   defaultMakingPercentBp Int    @default(1500)
   gstPercentBp           Int    @default(300)
@@ -106,6 +111,7 @@ model Shop {
   customerTags       CustomerTag[]
   campaignTemplates  CampaignTemplate[]
   outreachLogs       OutreachLog[]
+  notificationQueues NotificationQueue[]
 }
 
 /// The purities this shop deals in. Data, never an enum: another shop may carry
@@ -312,12 +318,13 @@ model Customer {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  sessions     CustomerSession[]
-  wishlist     WishlistItem[]
-  orders       Order[]
-  activities   CustomerActivity[]
-  tags         CustomerTag[]
-  outreachLogs OutreachLog[]
+  sessions           CustomerSession[]
+  wishlist           WishlistItem[]
+  orders             Order[]
+  activities         CustomerActivity[]
+  tags               CustomerTag[]
+  outreachLogs       OutreachLog[]
+  notificationQueues NotificationQueue[]
 
   @@unique([shopId, phone])
   @@index([shopId, phone])
@@ -402,9 +409,10 @@ model Order {
   roundingPaise Int
   totalPaise    Int
 
-  items     OrderItem[]
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  items              OrderItem[]
+  notificationQueues NotificationQueue[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 
   @@index([shopId, status])
   @@index([shopId, customerId])
@@ -471,5 +479,31 @@ model OutreachLog {
 
   @@index([shopId])
   @@index([customerId])
+}
+
+model NotificationQueue {
+  id          String   @id @default(cuid())
+  shopId      String
+  customerId  String?
+  orderId     String?
+  type        String // "ORDER_BOOKED", "ORDER_STATUS_CHANGED", "ADMIN_NEW_ORDER_ALERT", "MARKETING_BROADCAST"
+  channel     String // "EVOLUTION_API", "META_CLOUD_API"
+  recipient   String // Formatted phone number e.g. "917250580175"
+  payload     Json // Dynamic message variables & template metadata
+  status      String   @default("PENDING") // "PENDING", "DELIVERED", "FAILED"
+  attempts    Int      @default(0)
+  maxAttempts Int      @default(3)
+  lastError   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  order    Order?    @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  shop     Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId])
+  @@index([status])
+  @@index([customerId])
+  @@index([orderId])
 }
 
