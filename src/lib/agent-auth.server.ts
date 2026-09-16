@@ -86,3 +86,23 @@ export async function authenticateAgentRequest(
     apiKey,
   };
 }
+
+/**
+ * Revokes / deletes an API key by ID.
+ */
+export async function deleteApiKey(id: string): Promise<ApiKey> {
+  return await db.apiKey.delete({
+    where: { id },
+  });
+}
+
+/**
+ * Lists all API keys for a shop ordered by creation date descending.
+ */
+export async function listApiKeys(shopId: string): Promise<ApiKey[]> {
+  return await db.apiKey.findMany({
+    where: { shopId },
+    orderBy: { createdAt: 'desc' },
+  });
+}
+

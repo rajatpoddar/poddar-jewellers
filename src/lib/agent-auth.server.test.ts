@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import crypto from 'node:crypto';
 import { db } from '@/lib/db';
-import { generateApiKey, authenticateAgentRequest } from './agent-auth.server';
+import { generateApiKey, authenticateAgentRequest, deleteApiKey, listApiKeys } from './agent-auth.server';
 
 vi.mock('@/lib/db', () => ({
   db: {
@@ -9,6 +9,8 @@ vi.mock('@/lib/db', () => ({
       create: vi.fn(),
       findUnique: vi.fn(),
       update: vi.fn(),
+      delete: vi.fn(),
+      findMany: vi.fn(),
     },
   },
 }));
@@ -198,4 +200,32 @@ describe('Agent Authentication Middleware (agent-auth.server)', () => {
       expect(db.apiKey.findUnique).not.toHaveBeenCalled();
     });
   });
+
+  describe('deleteApiKey', () => {
+    it('deletes an API key record by ID', async () => {
+      const mockKey = { id: 'key-1', name: 'Key 1' };
+      vi.mocked(db.apiKey.delete).mockResolvedValue(mockKey as any);
+
+      const result = await deleteApiKey('key-1');
+
+      expect(db.apiKey.delete).toHaveBeenCalledWith({ where: { id: 'key-1' } });
+      expect(result).toEqual(mockKey);
+    });
+  });
+
+  describe('listApiKeys', () => {
+    it('lists API keys for a shop ordered by createdAt desc', async () => {
+      const mockKeys = [{ id: 'key-1' }, { id: 'key-2' }];
+      vi.mocked(db.apiKey.findMany).mockResolvedValue(mockKeys as any);
+
+      const result = await listApiKeys('shop-123');
+
+      expect(db.apiKey.findMany).toHaveBeenCalledWith({
+        where: { shopId: 'shop-123' },
+        orderBy: { createdAt: 'desc' },
+      });
+      expect(result).toEqual(mockKeys);
+    });
+  });
 });
+

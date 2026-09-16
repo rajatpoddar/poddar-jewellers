@@ -178,4 +178,12 @@ export const SparklesIcon = ({ className }: { className?: string } = {}) => (
   </Svg>
 );
 
+export const KeyIcon = ({ className }: { className?: string } = {}) => (
+  <Svg className={className}>
+    <circle cx="7.5" cy="15.5" r="4.5" />
+    <path d="m10.7 12.3 8.8-8.8m-4.5 1.5 3 3m-4.5-1.5 3 3" />
+  </Svg>
+);
+
+
 

@@ -8,6 +8,7 @@ import {
   CameraIcon,
   CategoryIcon,
   GalleryIcon,
+  KeyIcon,
   MetalIcon,
   OrderIcon,
   ProductIcon,
@@ -32,6 +33,7 @@ const LINKS: Array<{ href: string; label: string; icon: ReactNode }> = [
   { href: '/admin/categories', label: 'Categories', icon: <CategoryIcon /> },
   { href: '/admin/metals', label: 'Metal types', icon: <MetalIcon /> },
   { href: '/admin/photos', label: 'Photo prompts', icon: <CameraIcon /> },
+  { href: '/admin/api-keys', label: 'API Keys', icon: <KeyIcon /> },
   { href: '/admin/settings', label: 'Settings', icon: <SettingsIcon /> },
 ];
 
