@@ -425,3 +425,32 @@ Built and verified the complete Phase 3 subsystem:
 
 6. **Integrity & Verification**:
    208 unit tests pass across 33 test files. `tsc --noEmit` clean. `npm run build` production build succeeds cleanly.
+
+---
+
+### D21 — Phase 4 WhatsApp Automation & Dual-Track Notifications Engine
+**2026-09-16**
+
+Built and verified the complete Phase 4 subsystem:
+
+1. **Dual-Track Channel Architecture**:
+   To prevent phone number ban risks on the shop's WhatsApp number, transactional messages (low-volume, customer-initiated) are separated from marketing broadcasts:
+   - **Track 1 (Evolution API):** Handles all transactional order booking confirmations, status changes, and instant admin alerts.
+   - **Track 2 (Meta WhatsApp Cloud API REST `v19.0`):** Handles official marketing broadcast templates for opted-in customer lists.
+
+2. **Database Schema & Async Queue (`NotificationQueue`)**:
+   Created `NotificationQueue` table (`id`, `shopId`, `customerId`, `orderId`, `type`, `channel`, `recipient`, `payload`, `status`, `attempts`, `lastError`). Added `metaPhoneNumberId`, `metaAccessToken`, and `metaWabaId` to `Shop` table. Upholds Hard Rule 8 (`shopId` on every table).
+
+3. **Transactional Event Triggers & Non-Blocking Engine (`whatsapp-notifications.server.ts`)**:
+   - `createOrderBooking` triggers customer booking confirmation (`ORDER_BOOKED`) and instant shop admin alert (`ADMIN_NEW_ORDER_ALERT`).
+   - `updateOrderStatus` triggers customer status update notifications (`CONFIRMED`, `READY`, `COMPLETED`).
+   - Dispatches asynchronously in background with up to 3 exponential backoff retry attempts.
+
+4. **Admin Notification Audit Log & Resend Controls (`/admin/orders`)**:
+   Added delivery status badges (🟢 Delivered, 🟡 Retrying, 🔴 Failed) to admin order dashboard (`/admin/orders`) and order detail view (`/admin/orders/[id]`). Added 1-click **"Resend Notification"** server action (`resendNotificationAction`).
+
+5. **Meta Settings Form (`/admin/settings`)**:
+   Added Meta Cloud API credentials configuration form (`MetaSettingsForm.tsx`) with test connection action (`testMetaApiConnectionAction`).
+
+6. **Integrity & Verification**:
+   274 unit tests pass across 38 test files. `tsc --noEmit` clean. `npm run build` production build succeeds cleanly.
