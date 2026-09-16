@@ -28,6 +28,12 @@ enum ActivityType {
   WHATSAPP_ENQUIRE
 }
 
+enum PromotionScope {
+  SHOP_WIDE
+  CATEGORY
+  PRODUCT
+}
+
 /// One row per shop. Everything describing a shop or its business rules lives
 /// here and is editable from the admin panel — nothing may be hardcoded.
 ///
@@ -112,6 +118,8 @@ model Shop {
   campaignTemplates  CampaignTemplate[]
   outreachLogs       OutreachLog[]
   notificationQueues NotificationQueue[]
+  promotions         Promotion[]
+  heroSlides         HeroSlide[]
 }
 
 /// The purities this shop deals in. Data, never an enum: another shop may carry
@@ -173,8 +181,9 @@ model Category {
 
   /// Basis points. Null means inherit from the parent, then from the shop default.
   makingPercentBp Int?
-  sortOrder       Int  @default(0)
+  sortOrder       Int         @default(0)
   products        Product[]
+  promotions      Promotion[]
 
   @@unique([shopId, slug])
   @@index([shopId, parentId])
@@ -214,6 +223,7 @@ model Product {
   wishlistItems WishlistItem[]
   activities    CustomerActivity[]
   orderItems    OrderItem[]
+  promotions    ProductPromotion[]
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
 
@@ -505,5 +515,70 @@ model NotificationQueue {
   @@index([status])
   @@index([customerId])
   @@index([orderId])
+}
+
+model Promotion {
+  id                      String         @id @default(cuid())
+  shopId                  String
+  shop                    Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  name                    String
+  headline                String
+  badgeText               String
+
+  makingDiscountPercentBp Int
+
+  scope                   PromotionScope @default(SHOP_WIDE)
+
+  categoryId              String?
+  category                Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  productPromotions       ProductPromotion[]
+
+  startDate               DateTime
+  endDate                 DateTime
+  isActive                Boolean        @default(true)
+
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
+
+  heroSlides              HeroSlide[]
+
+  @@index([shopId, isActive, startDate, endDate])
+}
+
+model ProductPromotion {
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  promotionId String
+  promotion   Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+
+  @@id([productId, promotionId])
+}
+
+model HeroSlide {
+  id             String     @id @default(cuid())
+  shopId         String
+  shop           Shop       @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  title          String
+  subtitle       String?
+  imageUrl       String
+  mobileImageUrl String?
+  ctaText        String?
+  ctaUrl         String?
+
+  sortOrder      Int        @default(0)
+  isActive       Boolean    @default(true)
+  startDate      DateTime?
+  endDate        DateTime?
+
+  promotionId    String?
+  promotion      Promotion? @relation(fields: [promotionId], references: [id], onDelete: SetNull)
+
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@index([shopId, isActive, sortOrder])
 }
 

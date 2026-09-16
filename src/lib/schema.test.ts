@@ -19,3 +19,12 @@ describe('Phase 3 Schema Integrity', () => {
   });
 });
 
+describe('Phase 5 Schema Integrity', () => {
+  it('has promotion, product promotion, and hero slide tables configured', () => {
+    expect(db.promotion).toBeDefined();
+    expect(db.productPromotion).toBeDefined();
+    expect(db.heroSlide).toBeDefined();
+  });
+});
+
+
