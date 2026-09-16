@@ -30,6 +30,15 @@ export default async function AdminOrdersPage() {
       metalRatePaise: item.metalRatePaise,
       pricePaise: item.pricePaise,
     })),
+    notification: o.notificationQueues?.[0]
+      ? {
+          id: o.notificationQueues[0].id,
+          status: o.notificationQueues[0].status,
+          attempts: o.notificationQueues[0].attempts,
+          maxAttempts: o.notificationQueues[0].maxAttempts,
+          lastError: o.notificationQueues[0].lastError,
+        }
+      : null,
   }));
 
   return (

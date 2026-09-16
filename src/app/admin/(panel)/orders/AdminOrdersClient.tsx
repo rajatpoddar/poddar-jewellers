@@ -8,6 +8,7 @@ import { Button, ButtonLink } from '@/components/ui/Button';
 import { Card, PageHeader } from '@/components/ui/Surface';
 import { Badge, Notice } from '@/components/ui/Notice';
 import { Select } from '@/components/ui/Field';
+import { NotificationStatusBadge } from '@/components/admin/NotificationStatusBadge';
 import type { OrderStatus } from '@prisma/client';
 
 interface OrderItemData {
@@ -24,6 +25,14 @@ interface CustomerData {
   phone: string;
 }
 
+interface NotificationData {
+  id: string;
+  status: string;
+  attempts: number;
+  maxAttempts: number;
+  lastError: string | null;
+}
+
 interface OrderData {
   id: string;
   orderNumber: string;
@@ -34,6 +43,7 @@ interface OrderData {
   totalPaise: number;
   customer: CustomerData;
   items: OrderItemData[];
+  notification?: NotificationData | null;
 }
 
 interface AdminOrdersClientProps {
@@ -161,9 +171,21 @@ export function AdminOrdersClient({ orders: initialOrders, shopName, shopPhone }
               <Card key={order.id} className="p-6 space-y-4 border border-line">
                 <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b border-line pb-4">
                   <div>
-                    <div className="flex items-center gap-3">
-                      <span className="font-bold text-lg text-ink numeric">{order.orderNumber}</span>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Link
+                        href={`/admin/orders/${order.id}`}
+                        className="font-bold text-lg text-ink numeric hover:text-brand hover:underline"
+                      >
+                        {order.orderNumber}
+                      </Link>
                       {getStatusBadge(order.status)}
+                      <NotificationStatusBadge
+                        status={order.notification?.status}
+                        attempts={order.notification?.attempts}
+                        maxAttempts={order.notification?.maxAttempts}
+                        queueId={order.notification?.id}
+                        lastError={order.notification?.lastError}
+                      />
                     </div>
                     <div className="text-sm text-ink-muted mt-1 space-x-2">
                       <span>Customer: </span>
@@ -250,6 +272,9 @@ export function AdminOrdersClient({ orders: initialOrders, shopName, shopPhone }
 
                 {/* Actions */}
                 <div className="flex flex-wrap gap-3 pt-2 border-t border-line">
+                  <ButtonLink href={`/admin/orders/${order.id}`} intent="quiet" size="md">
+                    View Details
+                  </ButtonLink>
                   <ButtonLink href={waUrl} target="_blank" intent="secondary" size="md">
                     Send WhatsApp Receipt
                   </ButtonLink>

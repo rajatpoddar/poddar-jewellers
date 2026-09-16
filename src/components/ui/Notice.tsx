@@ -54,13 +54,14 @@ export function Badge({
   tone = 'neutral',
   children,
 }: {
-  tone?: 'neutral' | 'good' | 'warn';
+  tone?: 'neutral' | 'good' | 'warn' | 'danger';
   children: ReactNode;
 }) {
   const tones = {
     neutral: 'border-line-strong bg-surface-sunk text-ink-muted',
     good: 'border-good-line bg-good-soft text-good',
     warn: 'border-warn-line bg-warn-soft text-warn',
+    danger: 'border-danger-line bg-danger-soft text-danger',
   } as const;
 
   return (

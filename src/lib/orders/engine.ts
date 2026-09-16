@@ -210,6 +210,9 @@ export async function getOrderById(orderId: string) {
           },
         },
       },
+      notificationQueues: {
+        orderBy: { createdAt: 'desc' },
+      },
     },
   });
 }
@@ -236,6 +239,9 @@ export async function getAdminOrders(search?: string, statusFilter?: OrderStatus
     include: {
       customer: true,
       items: true,
+      notificationQueues: {
+        orderBy: { createdAt: 'desc' },
+      },
     },
     orderBy: { createdAt: 'desc' },
   });
