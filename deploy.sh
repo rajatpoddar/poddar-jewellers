@@ -57,8 +57,9 @@ fi
 
 # 4. Stop running container stack cleanly
 echo ""
-echo "⏹️ Step 2/5: Stopping running container stack..."
+echo "⏹️ Step 2/5: Stopping running container stack and clearing unused networks..."
 $SUDO $COMPOSE_CMD down || true
+$SUDO $DOCKER_BIN network prune -f >/dev/null 2>&1 || true
 
 # 5. Build and launch new containers
 echo ""
