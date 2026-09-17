@@ -29,6 +29,8 @@ ENV HOSTNAME=0.0.0.0
 RUN groupadd -g 1001 nodejs && useradd -u 1001 -g nodejs -m nextjs
 
 COPY --from=builder /app/public ./public
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 

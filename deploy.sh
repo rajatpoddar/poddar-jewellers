@@ -61,23 +61,32 @@ echo "⏹️ Step 2/5: Stopping running container stack and clearing unused netw
 $SUDO $COMPOSE_CMD down || true
 $SUDO $DOCKER_BIN network prune -f >/dev/null 2>&1 || true
 
-# 5. Build and launch new containers
+# 5. Build and start database container
 echo ""
-echo "🏗️ Step 3/5: Building and starting fresh container stack..."
-$SUDO $COMPOSE_CMD up -d --build app db
+echo "🏗️ Step 3/5: Starting database container..."
+$SUDO $COMPOSE_CMD up -d --build db
 
 # 6. Run database migrations & seed idempotently
 echo ""
 echo "🗄️ Step 4/5: Running database migrations & seed..."
 $SUDO $COMPOSE_CMD run --rm migrate
 
-# 7. Cleanup old dangling build images
+# 7. Start fresh app container after DB is migrated and seeded
 echo ""
-echo "🧹 Step 5/5: Cleaning up unused build cache..."
+echo "🚀 Step 5/5: Starting application container..."
+$SUDO $COMPOSE_CMD up -d --build app
+
+# 8. Cleanup old dangling build images
 $SUDO $DOCKER_BIN image prune -f >/dev/null 2>&1 || true
 
-# 8. Success Report
-SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "localhost")
+# 9. Success Report
+SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+if [ -z "$SERVER_IP" ]; then
+  SERVER_IP=$(ip route get 1.1.1.1 2>/dev/null | awk '{print $7}')
+fi
+if [ -z "$SERVER_IP" ]; then
+  SERVER_IP="localhost"
+fi
 
 echo ""
 echo "=========================================="
