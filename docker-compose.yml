@@ -50,3 +50,11 @@ services:
 volumes:
   pgdata:
   uploads:
+
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.88.99.0/24
+
