@@ -42,35 +42,39 @@ export async function getShopPromotions(shopId: string) {
 }
 
 export async function getActivePromotions(shopId: string, now: Date = new Date()) {
-  return db.promotion.findMany({
-    where: {
-      shopId,
-      isActive: true,
-      startDate: { lte: now },
-      endDate: { gte: now },
-    },
-    include: {
-      category: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-        },
+  try {
+    return await db.promotion.findMany({
+      where: {
+        shopId,
+        isActive: true,
+        startDate: { lte: now },
+        endDate: { gte: now },
       },
-      productPromotions: {
-        include: {
-          product: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
+      include: {
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+        productPromotions: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
             },
           },
         },
       },
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+      orderBy: { createdAt: 'desc' },
+    });
+  } catch {
+    return [];
+  }
 }
 
 export interface ResolvedPromotionDetails {

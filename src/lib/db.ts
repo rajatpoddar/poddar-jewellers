@@ -1,13 +1,15 @@
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+import pg from 'pg';
 
 // Prisma 7 takes its runtime connection through a driver adapter rather than a
 // `url` in the schema. The adapter owns the connection pool.
 function createClient(): PrismaClient {
   const connectionString = process.env.DATABASE_URL || 'postgresql://placeholder:placeholder@localhost:5432/placeholder';
+  const pool = new pg.Pool({ connectionString });
 
   return new PrismaClient({
-    adapter: new PrismaPg({ connectionString }),
+    adapter: new PrismaPg(pool),
     log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
   });
 }
