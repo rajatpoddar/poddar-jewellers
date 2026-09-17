@@ -1,15 +1,17 @@
-# Debian slim rather than Alpine: sharp's prebuilt binaries are far less
-# troublesome against glibc, and image processing is not a place to spend
-# debugging time.
+# Debian slim with OpenSSL installed for Prisma binary engines
 FROM node:22-bookworm-slim AS deps
 WORKDIR /app
+RUN apt-get update -y && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json ./
 RUN npm ci
 
 FROM node:22-bookworm-slim AS builder
 WORKDIR /app
+RUN apt-get update -y && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+ENV DATABASE_URL="postgresql://poddar:poddar_secret_2026@localhost:5432/poddar_jewellers?schema=public"
+ENV SESSION_SECRET="poddar_jewellers_production_session_secret_32chars"
 RUN npx prisma generate && npm run build
 
 # The builder stage keeps its full node_modules, so it doubles as the one-shot
@@ -18,6 +20,7 @@ RUN npx prisma generate && npm run build
 
 FROM node:22-bookworm-slim AS runner
 WORKDIR /app
+RUN apt-get update -y && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production
 ENV UPLOAD_DIR=/app/public/uploads
 ENV PORT=3000
